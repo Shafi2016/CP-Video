@@ -174,8 +174,22 @@ km.start_kernel()
 # Get the connection info
 connection_info = km.get_connection_info()
 
+# Convert bytes to strings in connection_info for JSON serialization
+def bytes_to_str(obj):
+    if isinstance(obj, bytes):
+        return obj.decode('utf-8')
+    elif isinstance(obj, dict):
+        return {k: bytes_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [bytes_to_str(i) for i in obj]
+    else:
+        return obj
+
+# Convert any bytes to strings for JSON serialization
+connection_info_json = bytes_to_str(connection_info)
+
 # Print the connection info as JSON
-print(json.dumps(connection_info))
+print(json.dumps(connection_info_json))
 `;
 
       fs.writeFileSync(tempScriptPath, scriptContent);
@@ -256,6 +270,17 @@ connection_info = json.loads('''${JSON.stringify(connection.connectionInfo)}''')
 # Get the code to execute from the second argument
 code = '''${request.code.replace(/'''/g, "\\'''")}'''
 
+# Convert bytes to strings in connection_info for JSON serialization
+def bytes_to_str(obj):
+    if isinstance(obj, bytes):
+        return obj.decode('utf-8')
+    elif isinstance(obj, dict):
+        return {k: bytes_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [bytes_to_str(i) for i in obj]
+    else:
+        return obj
+
 # Create a blocking kernel client
 kc = BlockingKernelClient()
 kc.load_connection_info(connection_info)
@@ -288,17 +313,19 @@ try:
                 # Create an output structure similar to what the frontend expects
                 output = {
                     'output_type': msg_type,
+                    'id': msg.get('msg_id', '') # Use message ID as output ID
                 }
                 
                 if msg_type == 'stream':
                     output['name'] = content['name']
                     output['text'] = content['text'].splitlines()
                 elif msg_type in ['display_data', 'execute_result']:
-                    output['data'] = content['data']
+                    # Handle potential binary data by converting to strings
+                    output['data'] = bytes_to_str(content['data'])
                     if 'execution_count' in content:
                         output['execution_count'] = content['execution_count']
                 elif msg_type == 'error':
-                    output['traceback'] = content['traceback']
+                    output['traceback'] = bytes_to_str(content['traceback'])
                     status = 'error'
                 
                 outputs.append(output)
@@ -320,7 +347,12 @@ result = {
     'execution_count': execution_count,
     'outputs': outputs
 }
-print(json.dumps(result))
+
+try:
+    print(json.dumps(result))
+except TypeError as e:
+    # If JSON serialization fails, try converting any remaining non-serializable objects
+    print(json.dumps(bytes_to_str(result)))
 `;
 
       fs.writeFileSync(tempScriptPath, scriptContent);
@@ -438,6 +470,17 @@ from jupyter_client import KernelManager
 # Get connection info from the first argument
 connection_info = json.loads('''${JSON.stringify(connection.connectionInfo)}''')
 
+# Convert bytes to strings in connection_info for JSON serialization
+def bytes_to_str(obj):
+    if isinstance(obj, bytes):
+        return obj.decode('utf-8')
+    elif isinstance(obj, dict):
+        return {k: bytes_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [bytes_to_str(i) for i in obj]
+    else:
+        return obj
+
 # Create a kernel manager
 km = KernelManager()
 km.load_connection_info(connection_info)
@@ -500,6 +543,17 @@ from jupyter_client import KernelManager
 # Get connection info from the first argument
 connection_info = json.loads('''${JSON.stringify(connection.connectionInfo)}''')
 
+# Convert bytes to strings in connection_info for JSON serialization
+def bytes_to_str(obj):
+    if isinstance(obj, bytes):
+        return obj.decode('utf-8')
+    elif isinstance(obj, dict):
+        return {k: bytes_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [bytes_to_str(i) for i in obj]
+    else:
+        return obj
+
 # Create a kernel manager
 km = KernelManager()
 km.load_connection_info(connection_info)
@@ -510,7 +564,9 @@ km.restart_kernel()
 # Get the new connection info
 new_connection_info = km.get_connection_info()
 
-print(json.dumps(new_connection_info))
+# Convert any bytes to strings for JSON serialization
+new_connection_info_json = bytes_to_str(new_connection_info)
+print(json.dumps(new_connection_info_json))
 `;
 
       fs.writeFileSync(tempScriptPath, scriptContent);
@@ -574,14 +630,27 @@ print(json.dumps(new_connection_info))
     const scriptContent = `
 from jupyter_client import KernelManager
 
+# Convert bytes to strings for consistency
+def bytes_to_str(obj):
+    if isinstance(obj, bytes):
+        return obj.decode('utf-8')
+    elif isinstance(obj, dict):
+        return {k: bytes_to_str(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [bytes_to_str(i) for i in obj]
+    else:
+        return obj
+
 # Find all running kernels and shut them down
 km = KernelManager()
 for kid in km.list_kernel_ids():
-    print(f"Shutting down kernel {kid}")
+    # Convert bytes to string if needed
+    kid_str = bytes_to_str(kid)
+    print(f"Shutting down kernel {kid_str}")
     try:
         km.shutdown_kernel(kid)
     except Exception as e:
-        print(f"Error shutting down kernel {kid}: {e}")
+        print(f"Error shutting down kernel {kid_str}: {e}")
 
 print("All kernels have been shutdown")
 `;

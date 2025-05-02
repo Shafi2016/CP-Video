@@ -55,14 +55,11 @@ export default function CodeCell({
   
   // Function to start presenting code character by character
   const startPresenting = () => {
-    if (isPresenting) {
-      // Stop the presentation
-      setIsPresenting(false);
-      if (presentationIntervalRef.current) {
-        clearInterval(presentationIntervalRef.current);
-        presentationIntervalRef.current = undefined;
-      }
-      return;
+    // If it's already presenting, we're restarting the presentation
+    if (isPresenting && presentationIntervalRef.current) {
+      // Stop the current presentation
+      clearInterval(presentationIntervalRef.current);
+      presentationIntervalRef.current = undefined;
     }
     
     // Start the presentation
@@ -80,7 +77,7 @@ export default function CodeCell({
         if (prevIndex >= cell.content.length) {
           clearInterval(presentationIntervalRef.current);
           presentationIntervalRef.current = undefined;
-          setIsPresenting(false);
+          setIsPresenting(true); // Keep isPresenting true to maintain the display
           
           // Auto-execute code when presentation finishes
           setTimeout(() => {
@@ -160,7 +157,22 @@ export default function CodeCell({
       {isPresentationMode ? (
         <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-4">
           {isPresenting ? (
-            <pre className="font-mono text-sm whitespace-pre-wrap">{displayedCode}</pre>
+            <div>
+              <pre className="font-mono text-sm whitespace-pre-wrap mb-4">{displayedCode}</pre>
+              {presentationIndex >= cell.content.length && (
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={startPresenting}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Restart Presentation
+                  </Button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10">
               <p className="text-neutral-500 dark:text-neutral-400 mb-4">

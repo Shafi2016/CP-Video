@@ -81,6 +81,12 @@ export default function CodeCell({
           clearInterval(presentationIntervalRef.current);
           presentationIntervalRef.current = undefined;
           setIsPresenting(false);
+          
+          // Auto-execute code when presentation finishes
+          setTimeout(() => {
+            onExecute();
+          }, 500); // Small delay before execution
+          
           return prevIndex;
         }
         setDisplayedCode(prev => prev + cell.content[prevIndex]);

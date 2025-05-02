@@ -127,6 +127,16 @@ export function Navbar({
             <Save className="h-5 w-5" />
           </Button>
 
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onUndo}
+            aria-label="Undo action"
+            title="Undo (Ctrl+Z/Cmd+Z)"
+          >
+            <Undo className="h-5 w-5" />
+          </Button>
+
           <div className="flex items-center ml-2">
             <span className="mr-2 text-sm text-neutral-600 dark:text-neutral-400">
               Light

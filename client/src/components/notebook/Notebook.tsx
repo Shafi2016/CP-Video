@@ -253,6 +253,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
           onDeleteCell={deleteCell}
           onCopyCellContent={copyCellContent}
           onCutCellContent={cutCellContent}
+          onUndo={undo}
           mobileSidebarOpen={mobileSidebarOpen}
           setMobileSidebarOpen={setMobileSidebarOpen}
           isPresentationMode={isPresentationMode}

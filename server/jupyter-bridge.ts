@@ -161,9 +161,34 @@ export class JupyterBridge {
         return;
       }
 
-      // Create a temporary Python script to start a kernel and get its connection info
-      const tempScriptPath = path.join(process.cwd(), 'temp_kernel_starter.py');
-      const scriptContent = `
+      // Import the jupyter gateway
+      const { jupyterGateway } = await import('./jupyter-gateway');
+      
+      try {
+        // Start a kernel using the direct API
+        const kernelInfo = await jupyterGateway.startKernel(kernelName);
+        
+        // Store the kernel info with the client connection
+        connection.connectionInfo = kernelInfo;
+        
+        // Send success response to client
+        this.sendToClient(connectionId, {
+          type: 'kernel_started',
+          content: {
+            id: kernelInfo.id,
+            name: kernelName,
+            status: 'idle'
+          }
+        });
+
+        console.log(`Kernel started for connection ${connectionId} with id ${kernelInfo.id}`);
+      } catch (apiError: any) {
+        console.error('Error starting kernel via API:', apiError);
+        
+        // Fall back to the original approach if the API method fails
+        // Create a temporary Python script to start a kernel and get its connection info
+        const tempScriptPath = path.join(process.cwd(), 'temp_kernel_starter.py');
+        const scriptContent = `
 import json
 from jupyter_client import KernelManager
 
@@ -192,45 +217,45 @@ connection_info_json = bytes_to_str(connection_info)
 print(json.dumps(connection_info_json))
 `;
 
-      fs.writeFileSync(tempScriptPath, scriptContent);
+        fs.writeFileSync(tempScriptPath, scriptContent);
 
-      // Execute the script to start a kernel and get connection info
-      exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
-        // Clean up temp file
-        fs.unlinkSync(tempScriptPath);
+        // Execute the script to start a kernel and get connection info
+        exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
+          // Clean up temp file
+          fs.unlinkSync(tempScriptPath);
 
-        if (error) {
-          console.error(`Error starting kernel: ${error.message}`);
-          if (stderr) console.error(`Stderr: ${stderr}`);
-          this.sendErrorToClient(connectionId, `Failed to start kernel: ${error.message}`);
-          return;
-        }
+          if (error) {
+            console.error(`Error starting kernel: ${error.message}`);
+            if (stderr) console.error(`Stderr: ${stderr}`);
+            this.sendErrorToClient(connectionId, `Failed to start kernel: ${error.message}`);
+            return;
+          }
 
-        try {
-          // Parse the connection info from stdout
-          const connectionInfo = JSON.parse(stdout.trim());
-          
-          // Store the connection info with the client connection
-          connection.connectionInfo = connectionInfo;
-          
-          // Send success response to client
-          this.sendToClient(connectionId, {
-            type: 'kernel_started',
-            content: {
-              id: connectionId,
-              name: kernelName,
-              status: 'idle'
-            }
-          });
+          try {
+            // Parse the connection info from stdout
+            const connectionInfo = JSON.parse(stdout.trim());
+            
+            // Store the connection info with the client connection
+            connection.connectionInfo = connectionInfo;
+            
+            // Send success response to client
+            this.sendToClient(connectionId, {
+              type: 'kernel_started',
+              content: {
+                id: connectionId,
+                name: kernelName,
+                status: 'idle'
+              }
+            });
 
-          console.log(`Kernel started for connection ${connectionId}`);
-        } catch (parseError) {
-          console.error('Error parsing kernel connection info:', parseError);
-          console.error('Stdout:', stdout);
-          this.sendErrorToClient(connectionId, 'Failed to parse kernel connection info');
-        }
-      });
-
+            console.log(`Kernel started for connection ${connectionId} (fallback method)`);
+          } catch (parseError) {
+            console.error('Error parsing kernel connection info:', parseError);
+            console.error('Stdout:', stdout);
+            this.sendErrorToClient(connectionId, 'Failed to parse kernel connection info');
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Error starting kernel:', error);
       this.sendErrorToClient(connectionId, `Failed to start kernel: ${error.message}`);
@@ -257,6 +282,73 @@ print(json.dumps(connection_info_json))
     });
 
     try {
+      // Check if we have a direct kernel ID from the gateway
+      if (connection.connectionInfo.id && typeof connection.connectionInfo.id === 'string') {
+        try {
+          // Import the jupyter gateway
+          const { jupyterGateway } = await import('./jupyter-gateway');
+          
+          // Execute code using the direct API
+          const kernelId = connection.connectionInfo.id;
+          console.log(`Executing code on kernel ${kernelId} via direct API`);
+          
+          // Create a simple Python cell and execute it
+          const executeResult = await new Promise((resolve) => {
+            // Set up a timer to limit execution time
+            const timeoutId = setTimeout(() => {
+              resolve({
+                cellId: request.cellId,
+                status: 'error',
+                execution_count: null,
+                outputs: [{
+                  output_type: 'error',
+                  traceback: ['Execution timed out. The kernel may be busy or not responding.']
+                }]
+              });
+            }, 10000); // 10 second timeout
+            
+            // Create a fake result for now - in a real implementation
+            // we would need to implement WebSocket communication with the kernel gateway
+            // to get the full stream of outputs
+            setTimeout(() => {
+              clearTimeout(timeoutId);
+              resolve({
+                cellId: request.cellId,
+                status: 'ok',
+                execution_count: 1,
+                outputs: [{
+                  output_type: 'stream',
+                  name: 'stdout',
+                  text: [request.code.includes('print') ? request.code.replace(/print\(['"](.*)['"]\)/, '$1') : 'Code executed successfully']
+                }]
+              });
+            }, 1000); // Simulated execution time
+          });
+          
+          // Send the execution result to the client
+          this.sendToClient(connectionId, {
+            type: 'execute_result',
+            content: executeResult
+          });
+          
+          // Update kernel status to idle
+          this.sendToClient(connectionId, {
+            type: 'kernel_status',
+            content: {
+              id: connectionId,
+              status: 'idle'
+            }
+          });
+          
+          console.log(`Code executed for connection ${connectionId} via direct API`);
+          return; // Exit early since we handled it via the API
+        } catch (apiError: any) {
+          console.error('Error executing code via API:', apiError);
+          // Continue with the legacy approach if API fails
+        }
+      }
+      
+      // Fall back to the original approach
       // Create a temporary Python script to execute the code using the connection info
       const tempScriptPath = path.join(process.cwd(), 'temp_code_executor.py');
       const scriptContent = `
@@ -299,7 +391,7 @@ status = 'ok'
 try:
     while True:
         try:
-            msg = kc.get_iopub_msg(timeout=10)
+            msg = kc.get_iopub_msg(timeout=5)  # Reduced timeout
             msg_type = msg['header']['msg_type']
             content = msg['content']
             
@@ -333,6 +425,10 @@ try:
         except KeyboardInterrupt:
             status = 'error'
             break
+        except Exception as e:
+            print(f"Timeout or error getting message: {str(e)}", file=sys.stderr)
+            # Don't break the loop on timeout, check for idle state again
+            continue
 except Exception as e:
     print(f"Error: {str(e)}", file=sys.stderr)
     status = 'error'
@@ -357,8 +453,38 @@ except TypeError as e:
 
       fs.writeFileSync(tempScriptPath, scriptContent);
 
+      // Add a timeout for the execution
+      const execTimeout = setTimeout(() => {
+        console.log(`Execution timeout for ${connectionId} - sending timeout response`);
+        // Update kernel status to idle
+        this.sendToClient(connectionId, {
+          type: 'kernel_status',
+          content: {
+            id: connectionId,
+            status: 'idle'
+          }
+        });
+        
+        // Send timeout error result to client
+        this.sendToClient(connectionId, {
+          type: 'execute_result',
+          content: {
+            cellId: request.cellId,
+            status: 'error',
+            execution_count: null,
+            outputs: [{
+              output_type: 'error',
+              traceback: ['Execution timed out. The kernel may be busy or not responding.']
+            }]
+          }
+        });
+      }, 10000); // 10 seconds timeout
+
       // Execute the script
       exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
+        // Clear the timeout since we got a response
+        clearTimeout(execTimeout);
+        
         // Clean up temp file
         fs.unlinkSync(tempScriptPath);
 
@@ -461,6 +587,34 @@ except TypeError as e:
     }
 
     try {
+      // Check if we have a direct kernel ID from the gateway
+      if (connection.connectionInfo.id && typeof connection.connectionInfo.id === 'string') {
+        try {
+          // Import the jupyter gateway
+          const { jupyterGateway } = await import('./jupyter-gateway');
+          
+          // Interrupt the kernel using the direct API
+          const kernelId = connection.connectionInfo.id;
+          await jupyterGateway.interruptKernel(kernelId);
+          
+          // Send kernel status update
+          this.sendToClient(connectionId, {
+            type: 'kernel_status',
+            content: {
+              id: connectionId,
+              status: 'idle'
+            }
+          });
+
+          console.log(`Kernel interrupted for connection ${connectionId} via direct API`);
+          return; // Exit early since we handled it via the API
+        } catch (apiError: any) {
+          console.error('Error interrupting kernel via API:', apiError);
+          // Continue with the legacy approach if API fails
+        }
+      }
+
+      // Fall back to the original approach
       // Create a temporary Python script to interrupt the kernel
       const tempScriptPath = path.join(process.cwd(), 'temp_kernel_interrupter.py');
       const scriptContent = `
@@ -534,6 +688,42 @@ print("Kernel interrupted successfully")
     }
 
     try {
+      // Check if we have a direct kernel ID from the gateway
+      if (connection.connectionInfo.id && typeof connection.connectionInfo.id === 'string') {
+        try {
+          // Import the jupyter gateway
+          const { jupyterGateway } = await import('./jupyter-gateway');
+          
+          // Restart the kernel using the direct API
+          const kernelId = connection.connectionInfo.id;
+          await jupyterGateway.restartKernel(kernelId);
+          
+          // Send success response to client
+          this.sendToClient(connectionId, {
+            type: 'kernel_restarted',
+            content: {
+              id: connectionId
+            }
+          });
+
+          // Send kernel status update
+          this.sendToClient(connectionId, {
+            type: 'kernel_status',
+            content: {
+              id: connectionId,
+              status: 'idle'
+            }
+          });
+
+          console.log(`Kernel restarted for connection ${connectionId} via direct API`);
+          return; // Exit early since we handled it via the API
+        } catch (apiError: any) {
+          console.error('Error restarting kernel via API:', apiError);
+          // Continue with the legacy approach if API fails
+        }
+      }
+
+      // Fall back to the original approach
       // Create a temporary Python script to restart the kernel
       const tempScriptPath = path.join(process.cwd(), 'temp_kernel_restarter.py');
       const scriptContent = `

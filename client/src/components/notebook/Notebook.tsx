@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Notebook as NotebookType, Cell } from "@/types";
 import CodeCell from "./CodeCell";
 import MarkdownCell from "./MarkdownCell";
@@ -19,6 +19,8 @@ interface NotebookProps {
 
 export function Notebook({ initialNotebook, id }: NotebookProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [presentationSpeed, setPresentationSpeed] = useState(50); // Default medium speed (1-100 scale)
   const { toast } = useToast();
   const { connectToKernel, isConnected } = useJupyter();
   

@@ -32,6 +32,7 @@ export interface Notebook {
     name: string;
     status: "idle" | "busy" | "starting" | "dead";
   };
+  presentationMode?: boolean;
 }
 
 export interface KernelInfo {

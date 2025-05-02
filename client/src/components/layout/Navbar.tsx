@@ -14,6 +14,7 @@ import {
   Copy,
   Scissors,
   Trash,
+  Presentation,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Notebook } from "@/types";
@@ -32,6 +33,10 @@ interface NavbarProps {
   onCutCellContent: (id: string) => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
+  isPresentationMode: boolean;
+  togglePresentationMode: () => void;
+  presentationSpeed: number;
+  setPresentationSpeed: (speed: number) => void;
 }
 
 export function Navbar({

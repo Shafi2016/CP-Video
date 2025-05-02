@@ -9,9 +9,9 @@ export default function NotebookPage() {
   const [match, params] = useRoute("/notebook/:id");
   const notebookId = match ? params.id : undefined;
 
-  // Query the specific notebook by ID
+  // Query the specific notebook by ID - make a direct API call to get notebook content
   const { data: notebook, error, isLoading } = useQuery<NotebookType>({
-    queryKey: ['/api/notebooks', notebookId],
+    queryKey: [`/api/notebooks/${notebookId}`],
     enabled: !!notebookId,
     retry: 1, // Limit retries
     refetchOnWindowFocus: false,
@@ -44,5 +44,7 @@ export default function NotebookPage() {
     );
   }
   
-  return <Notebook id={notebookId} initialNotebook={notebook} />;
+  // Make sure we're not passing a list of notebooks as initialNotebook
+  const validNotebook = notebook && !Array.isArray(notebook) ? notebook : undefined;
+  return <Notebook id={notebookId} initialNotebook={validNotebook} />;
 }

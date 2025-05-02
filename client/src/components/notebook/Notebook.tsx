@@ -26,9 +26,20 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
   console.log('initialNotebook in Notebook component:', initialNotebook);
   
   // Check if initialNotebook is valid or if it's an array (metadata list instead of a notebook)
-  const safeInitialNotebook = initialNotebook && 
-    !Array.isArray(initialNotebook) && 
-    typeof initialNotebook === 'object' ? initialNotebook : undefined;
+  let safeInitialNotebook;
+  if (initialNotebook) {
+    if (!Array.isArray(initialNotebook) && 
+        typeof initialNotebook === 'object' && 
+        'cells' in initialNotebook) {
+      // Valid notebook with cells
+      safeInitialNotebook = initialNotebook;
+    } else {
+      console.warn('Invalid initialNotebook format:', initialNotebook);
+      safeInitialNotebook = undefined;
+    }
+  } else {
+    safeInitialNotebook = undefined;
+  }
   
   const {
     notebook,

@@ -33,13 +33,25 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
   
   // Ensure the initialNotebook data is properly structured
   // Check if it's a valid notebook object with a cells array
-  const safeInitialNotebook = initialNotebook && 
-    typeof initialNotebook === 'object' && 
-    !Array.isArray(initialNotebook) &&
-    'cells' in initialNotebook && 
-    Array.isArray(initialNotebook.cells)
-      ? initialNotebook 
-      : createEmptyNotebook();
+  let safeInitialNotebook;
+  if (initialNotebook) {
+    if (typeof initialNotebook === 'object' && 
+        !Array.isArray(initialNotebook) &&
+        'cells' in initialNotebook && 
+        Array.isArray((initialNotebook as any).cells)) {
+      // Valid notebook object
+      safeInitialNotebook = initialNotebook;
+    } else if (Array.isArray(initialNotebook)) {
+      console.warn('Received array instead of notebook object:', initialNotebook);
+      // If we received an array (like from /api/notebooks), don't use it
+      safeInitialNotebook = createEmptyNotebook();
+    } else {
+      console.warn('Invalid notebook data structure:', initialNotebook);
+      safeInitialNotebook = createEmptyNotebook();
+    }
+  } else {
+    safeInitialNotebook = createEmptyNotebook();
+  }
     
   const [notebook, setNotebook] = useState<Notebook>(safeInitialNotebook);
   const [activeCell, setActiveCell] = useState<string | null>(null);
@@ -54,7 +66,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
 
   // Fetch notebook if ID is provided
   const { data: fetchedNotebook, isLoading } = useQuery({
-    queryKey: ['/api/notebooks', notebookId],
+    queryKey: [`/api/notebooks/${notebookId}`],
     enabled: !!notebookId && !initialNotebook,
     staleTime: Infinity,
   });
@@ -106,28 +118,38 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
       try {
         // Safely create a copy with proper type checking
         const notebookData = fetchedNotebook as any;
-        const formattedNotebook: Notebook = {
-          id: typeof notebookData.id === 'string' ? notebookData.id : 
-               typeof notebookData.id === 'number' ? String(notebookData.id) : uuidv4(),
-          title: typeof notebookData.title === 'string' ? notebookData.title : 'Untitled Notebook',
-          cells: Array.isArray(notebookData.cells) ? 
-              notebookData.cells.map((cell: any) => ({
-                id: cell.id || uuidv4(),
-                type: cell.type || 'code',
-                content: cell.content || '',
-                execution_state: cell.execution_state || 'idle',
-                execution_count: cell.execution_count,
-                outputs: Array.isArray(cell.outputs) ? cell.outputs : []
-              })) : [],
-          kernel: notebookData.kernel || undefined,
-        };
-        
-        console.log('Formatted notebook:', formattedNotebook);
-        setNotebook(formattedNotebook);
-        
-        // Set the first cell as active if there are cells
-        if (formattedNotebook.cells.length > 0) {
-          setActiveCell(formattedNotebook.cells[0].id);
+        // Check if we have a valid notebook object or just metadata
+        if (typeof notebookData === 'object' && !Array.isArray(notebookData) && notebookData.cells) {
+          const formattedNotebook: Notebook = {
+            id: typeof notebookData.id === 'string' ? notebookData.id : 
+                 typeof notebookData.id === 'number' ? String(notebookData.id) : uuidv4(),
+            title: typeof notebookData.title === 'string' ? notebookData.title : 'Untitled Notebook',
+            cells: Array.isArray(notebookData.cells) ? 
+                notebookData.cells.map((cell: any) => ({
+                  id: cell.id || uuidv4(),
+                  type: cell.type || 'code',
+                  content: cell.content || '',
+                  execution_state: cell.execution_state || 'idle',
+                  execution_count: cell.execution_count,
+                  outputs: Array.isArray(cell.outputs) ? cell.outputs : []
+                })) : [],
+            kernel: notebookData.kernel || undefined,
+          };
+          
+          console.log('Formatted notebook from fetchedNotebook:', formattedNotebook);
+          setNotebook(formattedNotebook);
+          
+          // Set the first cell as active if there are cells
+          if (formattedNotebook.cells.length > 0) {
+            setActiveCell(formattedNotebook.cells[0].id);
+          }
+        } else {
+          console.error('Fetched data is not a valid notebook:', notebookData);
+          toast({
+            title: 'Error',
+            description: 'Invalid notebook data received',
+            variant: 'destructive'
+          });
         }
       } catch (err) {
         console.error('Error processing notebook data:', err);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadMonaco } from "@/lib/monaco-loader";
+import * as monaco from "monaco-editor";
 import { Spinner } from "@/components/ui/spinner";
 
 interface MonacoEditorProps {
@@ -16,8 +16,7 @@ export default function MonacoEditor({
   height = 200,
 }: MonacoEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const monacoRef = useRef<any>(null);
-  const editorInstanceRef = useRef<any>(null);
+  const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,23 +25,9 @@ export default function MonacoEditor({
     const initMonaco = async () => {
       setIsLoading(true);
       try {
-        const monaco = await loadMonaco();
         if (cancelMonacoInit) return;
 
-        monacoRef.current = monaco;
-
         if (editorRef.current && !editorInstanceRef.current) {
-          // Configure Monaco with Python options
-          monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-            noSemanticValidation: true,
-            noSyntaxValidation: true,
-          });
-
-          monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-            target: monaco.languages.typescript.ScriptTarget.ES2016,
-            allowNonTsExtensions: true,
-          });
-
           // Create editor
           editorInstanceRef.current = monaco.editor.create(editorRef.current, {
             value,
@@ -64,7 +49,7 @@ export default function MonacoEditor({
 
           // Add event listener for changes
           editorInstanceRef.current.onDidChangeModelContent(() => {
-            onChange(editorInstanceRef.current.getValue());
+            onChange(editorInstanceRef.current?.getValue() || "");
           });
         }
       } catch (error) {
@@ -77,9 +62,9 @@ export default function MonacoEditor({
     initMonaco();
 
     const handleThemeChange = () => {
-      if (monacoRef.current && editorInstanceRef.current) {
+      if (editorInstanceRef.current) {
         const isDark = document.documentElement.classList.contains("dark");
-        monacoRef.current.editor.setTheme(isDark ? "vs-dark" : "vs");
+        monaco.editor.setTheme(isDark ? "vs-dark" : "vs");
       }
     };
 

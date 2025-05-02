@@ -21,6 +21,7 @@ interface Notebook {
   id: number;
   title: string;
   content: any[];
+  cells?: any[];  // Added cells property to match frontend expectation
   created_at: string;
   updated_at: string;
   path?: string;
@@ -91,13 +92,19 @@ export class MemStorage implements IStorage {
   async createNotebook(notebook: any): Promise<Notebook> {
     const id = this.notebookCurrentId++;
     const now = new Date().toISOString();
+    
+    // Store cells in both content and cells properties for compatibility
+    const cells = notebook.cells || [];
+    
     const newNotebook: Notebook = {
       ...notebook,
       id,
-      content: notebook.content || [],
+      content: cells,  // Store cells in content for backward compatibility
+      cells: cells,    // Store cells directly for easier frontend access
       created_at: now,
       updated_at: now
     };
+    
     this.notebooks.set(id, newNotebook);
     return newNotebook;
   }

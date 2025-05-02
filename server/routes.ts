@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { Notebook as NotebookType } from "../shared/schema";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -78,7 +79,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!notebook) {
         return res.status(404).json({ error: 'Notebook not found' });
       }
-      res.json(notebook);
+      
+      // Format notebook for the frontend - ensure we have proper cells data
+      // Convert stored notebook to the frontend format, ensuring cells are available
+      const frontendNotebook = {
+        id: notebook.id,
+        title: notebook.title,
+        cells: Array.isArray((notebook as any).cells) ? (notebook as any).cells : 
+               Array.isArray(notebook.content) ? notebook.content : [],
+        path: notebook.path,
+        created_at: notebook.created_at,
+        updated_at: notebook.updated_at
+      };
+      
+      res.json(frontendNotebook);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch notebook' });
     }
@@ -205,8 +219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         path: req.file.originalname
       };
       
+      // Debug the notebook being saved
+      console.log('Saving notebook with structure:', JSON.stringify(notebook, null, 2));
+      
       // Save the notebook
       const savedNotebook = await storage.createNotebook(notebook);
+      
+      // Debug the saved notebook
+      console.log('Saved notebook result:', JSON.stringify(savedNotebook, null, 2));
       
       res.status(201).json(savedNotebook);
     } catch (error: any) {

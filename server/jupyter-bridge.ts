@@ -422,10 +422,19 @@ print(json.dumps(result))
 
             fs.writeFileSync(tempScriptPath, scriptContent);
             
-            // Execute the script
-            exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
+            // Execute the script with a higher timeout
+            const execOptions = {
+              timeout: 25000, // 25 second process timeout
+              maxBuffer: 1024 * 1024 * 10 // 10MB buffer for larger outputs
+            };
+            
+            exec(`python3 ${tempScriptPath}`, execOptions, (error, stdout, stderr) => {
               // Clear the timeout since we got a response
-              clearTimeout(timeoutId);
+              try {
+                clearTimeout(timeoutId);
+              } catch (err) {
+                console.error('Error clearing timeout:', err);
+              }
               
               // Clean up temp file
               try {
@@ -626,10 +635,19 @@ except TypeError as e:
         });
       }, 30000); // 30 seconds timeout - increased from 10
 
-      // Execute the script
-      exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
+      // Execute the script with a higher timeout
+      const execOptions = {
+        timeout: 25000, // 25 second process timeout
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer for larger outputs
+      };
+      
+      exec(`python3 ${tempScriptPath}`, execOptions, (error, stdout, stderr) => {
         // Clear the timeout since we got a response
-        clearTimeout(execTimeout);
+        try {
+          clearTimeout(execTimeout);
+        } catch (err) {
+          console.error('Error clearing timeout:', err);
+        }
         
         // Clean up temp file
         fs.unlinkSync(tempScriptPath);

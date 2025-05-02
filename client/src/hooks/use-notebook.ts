@@ -8,10 +8,28 @@ import { v4 as uuidv4 } from "uuid";
 
 interface UndoHistory {
   type: 'delete' | 'cut' | 'clear';
-  cells?: Cell[];
+  cells: Cell[];
   cellId?: string;
   content?: string;
-  index?: number;
+  index: number;
+}
+
+interface DeleteHistory extends UndoHistory {
+  type: 'delete';
+  cells: Cell[];
+  index: number;
+}
+
+interface CutHistory extends UndoHistory {
+  type: 'cut';
+  cellId: string;
+  content: string;
+}
+
+interface ClearHistory extends UndoHistory {
+  type: 'clear';
+  cellId: string;
+  cells: Cell[];
 }
 
 const createEmptyNotebook = (): Notebook => ({
@@ -381,10 +399,12 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
       const cellIndex = notebook.cells.findIndex(cell => cell.id === id);
       
       if (cellToDelete && cellIndex !== -1) {
-        setHistory(prev => [
-          ...prev, 
-          { type: 'delete', cellId: id, cells: [cellToDelete], index: cellIndex }
-        ]);
+        const deleteHistory: DeleteHistory = {
+          type: 'delete',
+          cells: [cellToDelete],
+          index: cellIndex
+        };
+        setHistory(prev => [...prev, deleteHistory]);
       }
       
       setNotebook((prev) => {
@@ -507,7 +527,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
     
     switch (lastAction.type) {
       case 'delete':
-        if (lastAction.cells && lastAction.cells.length > 0 && typeof lastAction.index === 'number') {
+        if (lastAction.cells && Array.isArray(lastAction.cells) && lastAction.cells.length > 0 && typeof lastAction.index === 'number') {
           setNotebook(prev => {
             // Create new cells array with the deleted cell restored at its original position
             const newCells = [...prev.cells];
@@ -536,7 +556,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         break;
         
       case 'clear':
-        if (lastAction.cellId && lastAction.cells && lastAction.cells.length > 0) {
+        if (lastAction.cellId && lastAction.cells && Array.isArray(lastAction.cells) && lastAction.cells.length > 0) {
           const originalCell = lastAction.cells[0];
           
           setNotebook(prev => ({

@@ -124,6 +124,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
     copyCellContent,
     cutCellContent,
     clearCellOutputs,
+    undo,
     isLoading,
   } = useNotebook(id, safeInitialNotebook);
 
@@ -148,6 +149,27 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
 
     initKernel();
   }, [connectToKernel, toast]);
+
+  // Add keyboard event handlers for undo functionality
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        // Prevent default browser behavior
+        e.preventDefault();
+        // Call the undo function
+        undo();
+      }
+    };
+
+    // Add event listener to window
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undo]);
 
   if (isLoading) {
     return (

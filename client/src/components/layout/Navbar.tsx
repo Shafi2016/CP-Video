@@ -16,6 +16,7 @@ import {
   Scissors,
   Trash,
   Presentation,
+  Undo,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Notebook } from "@/types";
@@ -32,6 +33,7 @@ interface NavbarProps {
   onDeleteCell: (id: string) => void;
   onCopyCellContent: (id: string) => void;
   onCutCellContent: (id: string) => void;
+  onUndo: () => void; // Added onUndo callback
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
   isPresentationMode: boolean;
@@ -52,6 +54,7 @@ export function Navbar({
   onDeleteCell,
   onCopyCellContent,
   onCutCellContent,
+  onUndo,
   mobileSidebarOpen,
   setMobileSidebarOpen,
   isPresentationMode,

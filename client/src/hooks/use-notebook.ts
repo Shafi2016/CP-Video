@@ -28,10 +28,18 @@ const createEmptyNotebook = (): Notebook => ({
 });
 
 export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
+  // Debug the incoming initialNotebook
+  console.log('Initial notebook in useNotebook hook:', initialNotebook);
+  
   // Ensure the initialNotebook data is properly structured
-  const safeInitialNotebook = initialNotebook && 'cells' in initialNotebook && Array.isArray(initialNotebook.cells) 
-    ? initialNotebook 
-    : createEmptyNotebook();
+  // Check if it's a valid notebook object with a cells array
+  const safeInitialNotebook = initialNotebook && 
+    typeof initialNotebook === 'object' && 
+    !Array.isArray(initialNotebook) &&
+    'cells' in initialNotebook && 
+    Array.isArray(initialNotebook.cells)
+      ? initialNotebook 
+      : createEmptyNotebook();
     
   const [notebook, setNotebook] = useState<Notebook>(safeInitialNotebook);
   const [activeCell, setActiveCell] = useState<string | null>(null);

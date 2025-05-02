@@ -70,6 +70,10 @@ export const NotebookUpload = ({ onSuccess }: NotebookUploadProps) => {
         description: `${file.name} has been uploaded successfully`,
       });
 
+      // Debug the server response
+      const responseJson = await response.json();
+      console.log('Upload response:', responseJson);
+
       // Reset form and close dialog
       setFile(null);
       setOpen(false);

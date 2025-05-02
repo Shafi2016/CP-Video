@@ -288,215 +288,40 @@ print(json.dumps(connection_info_json))
           // Import the jupyter gateway
           const { jupyterGateway } = await import('./jupyter-gateway');
           
-          // Execute code using the direct API
+          // Execute code using the direct WebSocket API
           const kernelId = connection.connectionInfo.id;
-          console.log(`Executing code on kernel ${kernelId} via direct API`);
+          console.log(`Executing code on kernel ${kernelId} via WebSocket API`);
           
-          // Create a simple Python cell and execute it
-          const executeResult = await new Promise((resolve) => {
-            // Set up a timer to limit execution time
-            const timeoutId = setTimeout(() => {
-              console.log('Direct execution timed out, trying to force terminate');
-              resolve({
-                cellId: request.cellId,
-                status: 'error',
-                execution_count: null,
-                outputs: [{
-                  output_type: 'error',
-                  traceback: ['Execution timed out. The kernel may be busy or not responding.']
-                }]
-              });
-            }, 30000); // 30 second timeout - increased from 10 seconds
+          try {
+            // Use the gateway to execute the code with WebSockets
+            const executeResult = await jupyterGateway.executeCode(kernelId, request.code, request.cellId);
+            console.log(`WebSocket execution completed for kernel ${kernelId}`);
             
-            // Execute the code using the Python subprocess approach which is more reliable
-            // This is a temporary solution until we implement the WebSocket communication properly
-            const tempScriptPath = path.join(process.cwd(), 'temp_direct_executor.py');
-            const scriptContent = `
-import json
-import sys
-import io
-import traceback
-from contextlib import redirect_stdout, redirect_stderr
-
-# The code to execute
-code = '''${request.code.replace(/'''/g, "\\'''")}'''
-
-# Storage for results
-result = {
-    'cell_id': '${request.cellId}',
-    'status': 'ok',
-    'execution_count': 1,
-    'outputs': []
-}
-
-# Import common modules to make available in the execution environment
-try:
-    import numpy as np
-    import matplotlib
-    matplotlib.use('Agg')  # Use non-interactive backend
-    import matplotlib.pyplot as plt
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
-
-# Create a persistent namespace for execution (so variables are remembered between cells)
-try:
-    namespace
-except NameError:
-    namespace = {}
-    # Add builtins that might be useful
-    if HAS_MATPLOTLIB:
-        namespace.update({
-            'np': np,
-            'plt': plt,
-            'matplotlib': matplotlib
-        })
-
-# Capture stdout and stderr
-f_stdout = io.StringIO()
-f_stderr = io.StringIO()
-
-try:
-    # Redirect stdout and stderr
-    with redirect_stdout(f_stdout), redirect_stderr(f_stderr):
-        # Execute the code
-        exec(code, namespace)
-    
-    # Get captured output
-    stdout_output = f_stdout.getvalue()
-    stderr_output = f_stderr.getvalue()
-    
-    # Add outputs to result
-    if stdout_output:
-        result['outputs'].append({
-            'output_type': 'stream',
-            'name': 'stdout',
-            'text': stdout_output.splitlines() if stdout_output else []
-        })
-    
-    if stderr_output:
-        result['outputs'].append({
-            'output_type': 'stream',
-            'name': 'stderr',
-            'text': stderr_output.splitlines() if stderr_output else []
-        })
-    
-    # If matplotlib is available, check for figures to display
-    if HAS_MATPLOTLIB and plt.get_fignums():
-        for fig_num in plt.get_fignums():
-            fig = plt.figure(fig_num)
-            img_data = io.BytesIO()
-            fig.savefig(img_data, format='png')
-            img_data.seek(0)
-            import base64
-            result['outputs'].append({
-                'output_type': 'display_data',
-                'data': {
-                    'image/png': base64.b64encode(img_data.getvalue()).decode('utf-8')
-                }
-            })
-            plt.close(fig)
-    
-    # If there are no outputs, add a success message
-    if not result['outputs']:
-        result['outputs'].append({
-            'output_type': 'stream',
-            'name': 'stdout',
-            'text': ['Code executed successfully - no output']
-        })
-        
-except Exception as e:
-    # Get detailed traceback
-    tb_lines = traceback.format_exception(type(e), e, e.__traceback__)
-    
-    # Handle execution errors
-    result['status'] = 'error'
-    result['outputs'] = [{
-        'output_type': 'error',
-        'traceback': tb_lines
-    }]
-
-# Print the results as JSON
-print(json.dumps(result))
-`;
-
-            fs.writeFileSync(tempScriptPath, scriptContent);
+            // Send the execution result to the client
+            this.sendToClient(connectionId, {
+              type: 'execute_result',
+              content: executeResult
+            });
             
-            // Execute the script with a higher timeout
-            const execOptions = {
-              timeout: 25000, // 25 second process timeout
-              maxBuffer: 1024 * 1024 * 10 // 10MB buffer for larger outputs
-            };
-            
-            exec(`python3 ${tempScriptPath}`, execOptions, (error, stdout, stderr) => {
-              // Clear the timeout since we got a response
-              try {
-                clearTimeout(timeoutId);
-              } catch (err) {
-                console.error('Error clearing timeout:', err);
-              }
-              
-              // Clean up temp file
-              try {
-                fs.unlinkSync(tempScriptPath);
-              } catch (cleanupError) {
-                console.error('Error cleaning up temp file:', cleanupError);
-              }
-
-              if (error) {
-                console.error(`Error executing code directly: ${error.message}`);
-                if (stderr) console.error(`Stderr: ${stderr}`);
-                
-                resolve({
-                  cellId: request.cellId,
-                  status: 'error',
-                  execution_count: null,
-                  outputs: [{
-                    output_type: 'error',
-                    traceback: [error.message, stderr].filter(Boolean)
-                  }]
-                });
-                return;
-              }
-
-              try {
-                // Parse the result from stdout
-                const result = JSON.parse(stdout.trim());
-                resolve(result);
-              } catch (parseError) {
-                console.error('Error parsing direct execution result:', parseError);
-                console.error('Stdout:', stdout);
-                
-                resolve({
-                  cellId: request.cellId,
-                  status: 'error',
-                  execution_count: null,
-                  outputs: [{
-                    output_type: 'error',
-                    traceback: ['Failed to parse execution result', stdout, stderr].filter(Boolean)
-                  }]
-                });
+            // Update kernel status to idle
+            this.sendToClient(connectionId, {
+              type: 'kernel_status',
+              content: {
+                id: connectionId,
+                status: 'idle'
               }
             });
-          });
+            
+            console.log(`Code executed for connection ${connectionId} via WebSocket API`);
+            return; // Exit early since we handled it via the API
+            
+          } catch (wsError) {
+            console.error('WebSocket execution failed:', wsError);
+            // Continue to fallback execution (do not return here)
+          }
           
-          // Send the execution result to the client
-          this.sendToClient(connectionId, {
-            type: 'execute_result',
-            content: executeResult
-          });
-          
-          // Update kernel status to idle
-          this.sendToClient(connectionId, {
-            type: 'kernel_status',
-            content: {
-              id: connectionId,
-              status: 'idle'
-            }
-          });
-          
-          console.log(`Code executed for connection ${connectionId} via direct API`);
-          return; // Exit early since we handled it via the API
+          // This section will only run if the WebSocket approach failed
+          // We'll continue to the legacy code execution below
         } catch (apiError: any) {
           console.error('Error executing code via API:', apiError);
           // Continue with the legacy approach if API fails

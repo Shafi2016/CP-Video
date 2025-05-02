@@ -72,52 +72,36 @@ export class JupyterService {
       // Generate a unique ID for this kernel
       const kernelId = uuidv4();
       
-      // Start a Python process with ipykernel for Jupyter compatibility
-      const process = spawn('python', [
+      // Start a Python process for simple code execution
+      const process = spawn('python3', [
         '-c',
         `
         import json
         import sys
         import traceback
-        from ipykernel.kernelapp import IPKernelApp
-        from io import StringIO
-
-        class CaptureOutput:
-            def __init__(self):
-                self.value = []
-            
-            def write(self, data):
-                self.value.append(data)
-                return len(data)
-            
-            def flush(self):
-                pass
-
+        import io
+        import contextlib
+        
         def execute_code(code):
-            stdout_capture = CaptureOutput()
-            stderr_capture = CaptureOutput()
-            old_stdout, old_stderr = sys.stdout, sys.stderr
-            sys.stdout, sys.stderr = stdout_capture, stderr_capture
+            # Capture stdout and stderr
+            f = io.StringIO()
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+                try:
+                    # Execute the code
+                    exec(code)
+                    status = "ok"
+                    error = None
+                    traceback_text = None
+                except Exception as e:
+                    status = "error"
+                    error = str(e)
+                    traceback_text = traceback.format_exc()
             
-            try:
-                # Execute the code
-                result = eval(compile(code, '<string>', 'exec'))
-                status = "ok"
-                error = None
-                traceback_text = None
-            except Exception as e:
-                status = "error"
-                error = str(e)
-                traceback_text = traceback.format_exc()
-                result = None
-            finally:
-                sys.stdout, sys.stderr = old_stdout, old_stderr
+            output = f.getvalue()
             
             return {
                 "status": status,
-                "stdout": ''.join(stdout_capture.value),
-                "stderr": ''.join(stderr_capture.value),
-                "result": result,
+                "output": output,
                 "error": error,
                 "traceback": traceback_text
             }
@@ -125,8 +109,11 @@ export class JupyterService {
         # Monitor stdin for commands
         while True:
             try:
-                command = input()
-                command_data = json.loads(command)
+                line = input()
+                if not line.strip():
+                    continue
+                    
+                command_data = json.loads(line)
                 
                 if command_data.get("type") == "execute":
                     code = command_data.get("code", "")
@@ -139,9 +126,7 @@ export class JupyterService {
                         "type": "result",
                         "cell_id": cell_id,
                         "status": result["status"],
-                        "stdout": result["stdout"],
-                        "stderr": result["stderr"],
-                        "result": str(result["result"]) if result["result"] is not None else None,
+                        "output": result["output"],
                         "error": result["error"],
                         "traceback": result["traceback"]
                     }))
@@ -179,35 +164,13 @@ export class JupyterService {
             if (result.type === 'result') {
               const outputs = [];
               
-              // Handle stdout output
-              if (result.stdout && result.stdout.trim()) {
+              // Handle combined output (stdout/stderr)
+              if (result.output && result.output.trim()) {
                 outputs.push({
                   id: uuidv4(),
                   output_type: 'stream',
                   name: 'stdout',
-                  text: result.stdout.trim().split('\n')
-                });
-              }
-              
-              // Handle stderr output
-              if (result.stderr && result.stderr.trim()) {
-                outputs.push({
-                  id: uuidv4(),
-                  output_type: 'stream',
-                  name: 'stderr',
-                  text: result.stderr.trim().split('\n')
-                });
-              }
-              
-              // Handle execution result
-              if (result.result && result.result !== 'None') {
-                outputs.push({
-                  id: uuidv4(),
-                  output_type: 'execute_result',
-                  execution_count: 1,
-                  data: {
-                    'text/plain': result.result
-                  }
+                  text: result.output.trim().split('\n')
                 });
               }
               

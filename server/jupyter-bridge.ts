@@ -307,22 +307,127 @@ print(json.dumps(connection_info_json))
               });
             }, 10000); // 10 second timeout
             
-            // Create a fake result for now - in a real implementation
-            // we would need to implement WebSocket communication with the kernel gateway
-            // to get the full stream of outputs
-            setTimeout(() => {
+            // Execute the code using the Python subprocess approach which is more reliable
+            // This is a temporary solution until we implement the WebSocket communication properly
+            const tempScriptPath = path.join(process.cwd(), 'temp_direct_executor.py');
+            const scriptContent = `
+import json
+import sys
+import io
+from contextlib import redirect_stdout, redirect_stderr
+
+# The code to execute
+code = '''${request.code.replace(/'''/g, "\\'''")}'''
+
+# Storage for results
+result = {
+    'cell_id': '${request.cellId}',
+    'status': 'ok',
+    'execution_count': 1,
+    'outputs': []
+}
+
+# Capture stdout and stderr
+f_stdout = io.StringIO()
+f_stderr = io.StringIO()
+
+try:
+    # Create a namespace for execution
+    namespace = {}
+    
+    # Redirect stdout and stderr
+    with redirect_stdout(f_stdout), redirect_stderr(f_stderr):
+        # Execute the code
+        exec(code, namespace)
+    
+    # Get captured output
+    stdout_output = f_stdout.getvalue()
+    stderr_output = f_stderr.getvalue()
+    
+    # Add outputs to result
+    if stdout_output:
+        result['outputs'].append({
+            'output_type': 'stream',
+            'name': 'stdout',
+            'text': stdout_output.splitlines() if stdout_output else []
+        })
+    
+    if stderr_output:
+        result['outputs'].append({
+            'output_type': 'stream',
+            'name': 'stderr',
+            'text': stderr_output.splitlines() if stderr_output else []
+        })
+    
+    # If there's no output, add a success message
+    if not stdout_output and not stderr_output:
+        result['outputs'].append({
+            'output_type': 'stream',
+            'name': 'stdout',
+            'text': ['Code executed successfully - no output']
+        })
+        
+except Exception as e:
+    # Handle execution errors
+    result['status'] = 'error'
+    result['outputs'] = [{
+        'output_type': 'error',
+        'traceback': [str(e)]
+    }]
+
+# Print the results as JSON
+print(json.dumps(result))
+`;
+
+            fs.writeFileSync(tempScriptPath, scriptContent);
+            
+            // Execute the script
+            exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {
+              // Clear the timeout since we got a response
               clearTimeout(timeoutId);
-              resolve({
-                cellId: request.cellId,
-                status: 'ok',
-                execution_count: 1,
-                outputs: [{
-                  output_type: 'stream',
-                  name: 'stdout',
-                  text: [request.code.includes('print') ? request.code.replace(/print\(['"](.*)['"]\)/, '$1') : 'Code executed successfully']
-                }]
-              });
-            }, 1000); // Simulated execution time
+              
+              // Clean up temp file
+              try {
+                fs.unlinkSync(tempScriptPath);
+              } catch (cleanupError) {
+                console.error('Error cleaning up temp file:', cleanupError);
+              }
+
+              if (error) {
+                console.error(`Error executing code directly: ${error.message}`);
+                if (stderr) console.error(`Stderr: ${stderr}`);
+                
+                resolve({
+                  cellId: request.cellId,
+                  status: 'error',
+                  execution_count: null,
+                  outputs: [{
+                    output_type: 'error',
+                    traceback: [error.message, stderr].filter(Boolean)
+                  }]
+                });
+                return;
+              }
+
+              try {
+                // Parse the result from stdout
+                const result = JSON.parse(stdout.trim());
+                resolve(result);
+              } catch (parseError) {
+                console.error('Error parsing direct execution result:', parseError);
+                console.error('Stdout:', stdout);
+                
+                resolve({
+                  cellId: request.cellId,
+                  status: 'error',
+                  execution_count: null,
+                  outputs: [{
+                    output_type: 'error',
+                    traceback: ['Failed to parse execution result', stdout, stderr].filter(Boolean)
+                  }]
+                });
+              }
+            });
           });
           
           // Send the execution result to the client

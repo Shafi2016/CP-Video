@@ -207,7 +207,7 @@ export default function CodeCell({
         <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-6 mb-4">
           {isPresenting ? (
             <div>
-              <pre className="font-mono text-sm whitespace-pre-wrap mb-4 python-code">{displayedCode}</pre>
+              <HighlightedCode code={displayedCode} />
               {presentationIndex >= cell.content.length && (
                 <div className="flex justify-center">
                   <Button 

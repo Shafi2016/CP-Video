@@ -52,8 +52,8 @@ export default function MonacoEditor({
             value,
             language: language === 'python' ? 'python' : language,
             theme: document.documentElement.classList.contains("dark") 
-              ? "vs-dark" 
-              : "vs",
+              ? "jupyter-python-dark" 
+              : "jupyter-python",
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             lineNumbers: "on",

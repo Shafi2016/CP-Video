@@ -53,7 +53,7 @@ export default function Home() {
             </div>
 
             <div className="flex-1 mx-4">
-              <h1 className="text-xl font-semibold">Jupyter Notebooks</h1>
+              <h1 className="text-xl font-semibold">CodePresenter</h1>
             </div>
 
             <div className="flex items-center space-x-4">

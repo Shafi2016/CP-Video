@@ -4,11 +4,12 @@ import { Book, FileText, Terminal, Settings, FileCode } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NotebookListItem } from "@/types";
 
 export function Sidebar() {
   const [location] = useLocation();
 
-  const { data: recentNotebooks } = useQuery({
+  const { data: recentNotebooks = [] } = useQuery<NotebookListItem[]>({
     queryKey: ['/api/notebooks/recent'],
     staleTime: 60 * 1000, // 1 minute
   });
@@ -30,7 +31,7 @@ export function Sidebar() {
               d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 16.5a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15zm-1.5-6a1.5 1.5 0 1 0 3 0V9a1.5 1.5 0 0 0-3 0v4.5z"
             />
           </svg>
-          <span className="text-xl font-semibold">JupyterLab</span>
+          <span className="text-xl font-semibold">CodePresenter</span>
         </div>
       </div>
 
@@ -80,14 +81,7 @@ export function Sidebar() {
           </div>
         )}
 
-        <div className="px-3 py-4 border-t border-neutral-200 dark:border-neutral-700">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 h-3 w-3 rounded-full bg-green-500 mr-2"></div>
-            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Python 3 (Active)
-            </span>
-          </div>
-        </div>
+
       </ScrollArea>
     </div>
   );

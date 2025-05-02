@@ -22,6 +22,12 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
   const { toast } = useToast();
   const { connectToKernel, isConnected } = useJupyter();
   
+  // Debug the incoming notebook data
+  console.log('initialNotebook in Notebook component:', initialNotebook);
+  
+  // Make sure initialNotebook has valid cells array before using it
+  const safeInitialNotebook = initialNotebook && 'cells' in initialNotebook ? initialNotebook : undefined;
+  
   const {
     notebook,
     activeCell,
@@ -36,7 +42,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
     copyCellContent,
     cutCellContent,
     isLoading,
-  } = useNotebook(id, initialNotebook);
+  } = useNotebook(id, safeInitialNotebook);
 
   // Connect to kernel when component mounts
   useEffect(() => {

@@ -28,9 +28,12 @@ const createEmptyNotebook = (): Notebook => ({
 });
 
 export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
-  const [notebook, setNotebook] = useState<Notebook>(
-    initialNotebook || createEmptyNotebook()
-  );
+  // Ensure the initialNotebook data is properly structured
+  const safeInitialNotebook = initialNotebook && 'cells' in initialNotebook && Array.isArray(initialNotebook.cells) 
+    ? initialNotebook 
+    : createEmptyNotebook();
+    
+  const [notebook, setNotebook] = useState<Notebook>(safeInitialNotebook);
   const [activeCell, setActiveCell] = useState<string | null>(null);
   const { toast } = useToast();
   const {
@@ -92,14 +95,42 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
   // Initialize notebook from fetched data
   useEffect(() => {
     if (fetchedNotebook) {
-      setNotebook(fetchedNotebook);
-      
-      // Set the first cell as active if there are cells
-      if (fetchedNotebook.cells.length > 0) {
-        setActiveCell(fetchedNotebook.cells[0].id);
+      try {
+        // Safely create a copy with proper type checking
+        const notebookData = fetchedNotebook as any;
+        const formattedNotebook: Notebook = {
+          id: typeof notebookData.id === 'string' ? notebookData.id : 
+               typeof notebookData.id === 'number' ? String(notebookData.id) : uuidv4(),
+          title: typeof notebookData.title === 'string' ? notebookData.title : 'Untitled Notebook',
+          cells: Array.isArray(notebookData.cells) ? 
+              notebookData.cells.map((cell: any) => ({
+                id: cell.id || uuidv4(),
+                type: cell.type || 'code',
+                content: cell.content || '',
+                execution_state: cell.execution_state || 'idle',
+                execution_count: cell.execution_count,
+                outputs: Array.isArray(cell.outputs) ? cell.outputs : []
+              })) : [],
+          kernel: notebookData.kernel || undefined,
+        };
+        
+        console.log('Formatted notebook:', formattedNotebook);
+        setNotebook(formattedNotebook);
+        
+        // Set the first cell as active if there are cells
+        if (formattedNotebook.cells.length > 0) {
+          setActiveCell(formattedNotebook.cells[0].id);
+        }
+      } catch (err) {
+        console.error('Error processing notebook data:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to process notebook data',
+          variant: 'destructive'
+        });
       }
     }
-  }, [fetchedNotebook]);
+  }, [fetchedNotebook, toast]);
 
   // Connect to kernel when notebook is loaded
   useEffect(() => {
@@ -228,8 +259,11 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
               : c
           ),
         }));
-      } catch (error) {
+      } catch (error: any) {
         console.error("Execution error:", error);
+        
+        // Format the error message
+        const errorMessage = error?.toString() || 'Unknown execution error';
         
         // Update cell state to error
         setNotebook((prev) => ({
@@ -243,7 +277,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
                     {
                       id: uuidv4(),
                       output_type: "error",
-                      traceback: [error.toString()],
+                      traceback: [errorMessage],
                     },
                   ],
                 }
@@ -253,7 +287,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         
         toast({
           title: "Execution failed",
-          description: error.toString(),
+          description: errorMessage,
           variant: "destructive",
         });
       }

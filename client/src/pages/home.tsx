@@ -57,17 +57,16 @@ export default function Home() {
 
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
-                <span className="mr-2 text-sm text-neutral-600 dark:text-neutral-400">Light</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={theme === "dark"}
-                    onChange={(e) => setTheme(e.target.checked ? "dark" : "light")}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-neutral-300 dark:bg-neutral-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-                <span className="ml-2 text-sm text-neutral-600 dark:text-neutral-400">Dark</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    const newTheme = theme === "dark" ? "light" : "dark";
+                    setTheme(newTheme);
+                  }}
+                >
+                  {theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+                </Button>
               </div>
             </div>
           </div>
@@ -91,12 +90,17 @@ export default function Home() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <Link href="/notebook">
-                  <Button className="bg-primary">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Notebook
-                  </Button>
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <NotebookUpload onSuccess={() => {
+                    // Refresh the notebooks list
+                  }} />
+                  <Link href="/notebook">
+                    <Button className="bg-primary">
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Notebook
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
             
@@ -157,14 +161,19 @@ export default function Home() {
                 <p className="mt-2 text-neutral-600 dark:text-neutral-400">
                   {searchQuery
                     ? `No results for "${searchQuery}"`
-                    : "Get started by creating a new notebook"}
+                    : "Get started by creating or uploading a notebook"}
                 </p>
-                <Link href="/notebook">
-                  <Button className="mt-6 bg-primary">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create a new notebook
-                  </Button>
-                </Link>
+                <div className="flex gap-3 justify-center mt-6">
+                  <NotebookUpload onSuccess={() => {
+                    // Refresh the notebooks list
+                  }} />
+                  <Link href="/notebook">
+                    <Button className="bg-primary">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create a new notebook
+                    </Button>
+                  </Link>
+                </div>
               </div>
             )}
           </div>

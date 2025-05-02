@@ -1,13 +1,17 @@
 import React from "react";
 
-// Temporary implementation - will be expanded later
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  return children;
+// Simplified theme implementation
+export function ThemeProvider(props: { children: React.ReactNode }) {
+  return props.children;
 }
 
+// Simple theme hook
 export function useTheme() {
-  return {
-    theme: "dark",
-    setTheme: () => {}
+  const [theme, setInternalTheme] = React.useState("light");
+  
+  const setTheme = (newTheme: string) => {
+    setInternalTheme(newTheme);
   };
+
+  return { theme, setTheme };
 }

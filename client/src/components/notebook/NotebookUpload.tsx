@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -50,12 +49,17 @@ export const NotebookUpload = ({ onSuccess }: NotebookUploadProps) => {
       const formData = new FormData();
       formData.append('notebook', file);
 
-      await apiRequest('/api/notebooks/upload', {
+      const response = await fetch('/api/notebooks/upload', {
         method: 'POST',
         body: formData,
         // Don't set Content-Type header when using FormData
         // Fetch will automatically set it to multipart/form-data with boundary
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || response.statusText);
+      }
 
       // Invalidate notebooks query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['/api/notebooks'] });

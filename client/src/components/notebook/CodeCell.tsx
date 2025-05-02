@@ -202,15 +202,15 @@ export default function CodeCell({
       )}
       
       {cell.outputs.length > 0 && (
-        <div className="output-container">
-          <div className="flex justify-between items-center border-t border-neutral-200 dark:border-neutral-700 mt-4 pt-2 pb-2">
-            <div className="text-xs text-neutral-500">Output:</div>
+        <div className="output-container mt-4">
+          <div className="flex justify-between items-center border-t border-neutral-200 dark:border-neutral-700 pt-2 pb-2">
+            <div className="text-xs text-neutral-500 font-medium">Output:</div>
             <button 
               className="p-1 text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 flex items-center"
               onClick={(e) => {
                 e.stopPropagation();
                 // Call the clear outputs function passed from parent
-                onClearOutputs?.()
+                onClearOutputs?.();
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -223,7 +223,7 @@ export default function CodeCell({
               <span className="ml-1">Clear output</span>
             </button>
           </div>
-          <div className="output-area overflow-auto pb-8" style={{ maxHeight: 'none' }}>
+          <div className="output-area overflow-visible pb-6 pt-2 rounded-md">
             <OutputArea outputs={cell.outputs} />
           </div>
         </div>

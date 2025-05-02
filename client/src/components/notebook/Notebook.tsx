@@ -182,6 +182,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
                       onClick={() => setActiveCell(cell.id)}
                       onChange={(newContent) => updateCellContent(cell.id, newContent)}
                       onExecute={() => handleExecuteCell(cell.id)}
+                      onClearOutputs={() => clearCellOutputs(cell.id)}
                       isPresentationMode={isPresentationMode}
                       presentationSpeed={presentationSpeed}
                     />

@@ -33,7 +33,11 @@ const ErrorOutput = ({ traceback }: { traceback: string[] }) => (
 
 const ImageOutput = ({ src, alt = "Output image" }: { src: string; alt?: string }) => (
   <div className="p-2 flex justify-center">
-    <img src={src} alt={alt} className="max-w-full" />
+    <img 
+      src={src} 
+      alt={alt} 
+      className="max-w-full h-auto object-contain max-h-[70vh] rounded-md" 
+    />
   </div>
 );
 
@@ -43,7 +47,7 @@ export function OutputArea({ outputs }: OutputAreaProps) {
   }
 
   return (
-    <ScrollArea className="bg-white dark:bg-neutral-800 rounded overflow-x-auto max-h-96">
+    <ScrollArea className="bg-white dark:bg-neutral-800 rounded overflow-x-auto w-full">
       {outputs.map((output, index) => {
         if (output.output_type === "stream" && output.text) {
           return <TextOutput key={index} text={output.text} />;

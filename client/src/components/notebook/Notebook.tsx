@@ -203,7 +203,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden relative">
       {/* Mobile sidebar */}
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetContent side="left" className="p-0 w-4/5">
@@ -241,7 +241,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
 
         {/* Notebook content */}
         <ScrollArea className="flex-1 p-4 bg-white dark:bg-neutral-900" id="notebook-content">
-          <div className="max-w-5xl mx-auto pb-20"> {/* Added container with max-width and bottom padding */}
+          <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'max-w-6xl' : 'max-w-5xl'} mx-auto pb-20`}>
             <div className="space-y-12"> {/* Increased space between cells for the add buttons */}
               {notebook.cells.map((cell: Cell) => (
                 <div className="relative group" key={cell.id}>

@@ -26,7 +26,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   ];
 
   return (
-    <div className={`hidden md:flex md:flex-col ${isCollapsed ? 'md:w-16' : 'md:w-64'} bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700 h-screen transition-all duration-300 relative`}>
+    <div className={`hidden md:flex md:flex-col ${isCollapsed ? 'md:w-16' : 'md:w-64'} bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700 h-screen transition-all duration-300 fixed top-0 left-0 z-40`}>
       {/* Toggle collapse button (positioned on the right edge) */}
       <button
         className="absolute right-0 top-20 transform translate-x-1/2 bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-full p-1 shadow-md z-50"

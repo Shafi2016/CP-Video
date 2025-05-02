@@ -4,8 +4,7 @@ import { Link } from "wouter";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, FileCode, ChevronDown } from "lucide-react";
+import { Plus, FileCode, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { NotebookListItem } from "@/types";
@@ -13,8 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { NotebookUpload } from "@/components/notebook/NotebookUpload";
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   
@@ -22,21 +21,20 @@ export default function Home() {
     queryKey: ["/api/notebooks"],
   });
 
-  const filteredNotebooks = notebooks?.filter(
-    (notebook) => notebook.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Display all notebooks without filtering
+  const filteredNotebooks = notebooks;
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Mobile sidebar */}
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetContent side="left" className="p-0 w-4/5">
-          <Sidebar />
+          <Sidebar isCollapsed={false} onToggleCollapse={() => {}} />
         </SheetContent>
       </Sheet>
 
       {/* Desktop sidebar */}
-      <Sidebar />
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Top navigation */}
@@ -80,30 +78,18 @@ export default function Home() {
               <h2 className="text-2xl font-bold mb-4 md:mb-0">
                 My Notebooks
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 h-4 w-4" />
-                  <Input
-                    type="search"
-                    placeholder="Search notebooks..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <NotebookUpload onSuccess={() => {
-                    // Refresh the notebooks list
-                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks/recent"] });
-                  }} />
-                  <Link href="/notebook">
-                    <Button className="bg-primary">
-                      <Plus className="mr-2 h-4 w-4" />
-                      New Notebook
-                    </Button>
-                  </Link>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <NotebookUpload onSuccess={() => {
+                  // Refresh the notebooks list
+                  queryClient.invalidateQueries({ queryKey: ["/api/notebooks"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/notebooks/recent"] });
+                }} />
+                <Link href="/notebook">
+                  <Button className="bg-primary">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Notebook
+                  </Button>
+                </Link>
               </div>
             </div>
             
@@ -164,9 +150,7 @@ export default function Home() {
                 <FileCode className="mx-auto h-12 w-12 text-neutral-400" />
                 <h3 className="mt-4 text-lg font-medium">No notebooks found</h3>
                 <p className="mt-2 text-neutral-600 dark:text-neutral-400">
-                  {searchQuery
-                    ? `No results for "${searchQuery}"`
-                    : "Get started by creating or uploading a notebook"}
+                  Get started by creating or uploading a notebook
                 </p>
                 <div className="flex gap-3 justify-center mt-6">
                   <NotebookUpload onSuccess={() => {

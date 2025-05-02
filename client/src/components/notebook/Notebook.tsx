@@ -306,37 +306,43 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
                 </div>
               ))}
 
-              {/* Add cell buttons at the end (Google Colab style) */}
+              {/* Add hover button at the bottom of the notebook */}
               {!isPresentationMode && (
-                <div className="flex justify-center mt-10 mb-10">
-                  <div className="bg-white dark:bg-neutral-800 shadow-sm flex items-center rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-                    {/* Code cell button */}
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        addCell("code");
-                      }}
-                      className="h-8 px-3 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      <span>Code</span>
-                    </Button>
-                    
-                    {/* Divider */}
-                    <div className="h-5 w-px bg-neutral-200 dark:bg-neutral-700"></div>
-                    
-                    {/* Text cell button */}
-                    <Button
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        addCell("markdown");
-                      }}
-                      className="h-8 px-3 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                    >
-                      <span>Text</span>
-                    </Button>
+                <div className="relative h-20 group">
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex">
+                    <div className="bg-white dark:bg-neutral-800 shadow-sm flex items-center rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+                      {/* Code cell button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          addCell("code");
+                        }}
+                        className="h-7 px-2 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                      >
+                        <PlusCircle className="h-4 w-4 mr-1" />
+                        <span className="text-xs">Code</span>
+                      </Button>
+                      
+                      {/* Divider */}
+                      <div className="h-5 w-px bg-neutral-200 dark:bg-neutral-700"></div>
+                      
+                      {/* Text cell button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          addCell("markdown");
+                        }}
+                        className="h-7 px-2 rounded-none hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                      >
+                        <span className="text-xs">Text</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

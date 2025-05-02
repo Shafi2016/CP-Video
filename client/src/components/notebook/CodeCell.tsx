@@ -7,6 +7,53 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+interface HighlightedCodeProps {
+  code: string;
+}
+
+// Function to add simple syntax highlighting for Python
+const HighlightedCode = ({ code }: HighlightedCodeProps) => {
+  // Apply syntax highlighting by replacing key patterns with styled spans
+  const highlightCode = (code: string) => {
+    // Replace Python comments (# ...)
+    let highlighted = code.replace(
+      /(#.*)$/gm, 
+      '<span class="comment">$1</span>'
+    );
+    
+    // Replace strings ('...' and "...")
+    highlighted = highlighted.replace(
+      /(['"])(.*?)\1/g, 
+      '<span class="string">$1$2$1</span>'
+    );
+    
+    // Replace Python keywords
+    const keywords = ['import', 'from', 'as', 'def', 'class', 'for', 'while', 'if', 'else', 'elif', 'try', 'except', 'finally', 'with', 'return', 'and', 'or', 'not', 'in', 'is', 'None', 'True', 'False'];
+    keywords.forEach(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+      highlighted = highlighted.replace(
+        regex,
+        `<span class="keyword">${keyword}</span>`
+      );
+    });
+    
+    // Replace numbers
+    highlighted = highlighted.replace(
+      /\b(\d+(\.\d+)?\b)/g,
+      '<span class="number">$1</span>'
+    );
+    
+    return highlighted;
+  };
+
+  return (
+    <pre 
+      className="font-mono text-sm whitespace-pre-wrap mb-4 python-code" 
+      dangerouslySetInnerHTML={{ __html: highlightCode(code) }}
+    />
+  );
+};
+
 interface CodeCellProps {
   cell: Cell;
   isActive: boolean;
@@ -160,7 +207,7 @@ export default function CodeCell({
         <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-6 mb-4">
           {isPresenting ? (
             <div>
-              <pre className="font-mono text-sm whitespace-pre-wrap mb-4">{displayedCode}</pre>
+              <pre className="font-mono text-sm whitespace-pre-wrap mb-4 python-code">{displayedCode}</pre>
               {presentationIndex >= cell.content.length && (
                 <div className="flex justify-center">
                   <Button 

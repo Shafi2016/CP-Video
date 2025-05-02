@@ -10,6 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { NotebookListItem } from "@/types";
 import { Separator } from "@/components/ui/separator";
+import { NotebookUpload } from "@/components/notebook/NotebookUpload";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");

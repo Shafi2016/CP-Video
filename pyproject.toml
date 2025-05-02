@@ -5,6 +5,13 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "ipykernel>=6.29.5",
+    "jupyter-client>=8.6.3",
     "jupyter>=1.1.1",
     "notebook>=7.4.1",
+    "traitlets>=5.14.3",
+    "websockets>=15.0.1",
+    "zmq>=0.0.0",
+    "jupyter-core>=5.7.2",
+    "tornado>=6.4.2",
+    "pyzmq>=26.4.0",
 ]

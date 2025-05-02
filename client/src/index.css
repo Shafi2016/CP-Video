@@ -113,4 +113,24 @@
   .monaco-editor .view-line span {
     display: inline-block;
   }
+  
+  /* Remove blue border lines from Monaco editor */
+  .monaco-editor .focused .monaco-editor-background,
+  .monaco-editor .focused .margin-view-overlays,
+  .monaco-editor .focused .view-lines,
+  .monaco-editor .focused .monaco-editor-background,
+  .monaco-editor .focused .margin,
+  .monaco-editor .monaco-editor-background,
+  .monaco-editor .margin-view-overlays,
+  .monaco-editor .view-lines,
+  .monaco-editor-container div[role="presentation"] {
+    border-color: transparent !important;
+    outline: none !important;
+  }
+  
+  /* Fix Monaco editor container border */
+  .monaco-editor {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius);
+  }
 }

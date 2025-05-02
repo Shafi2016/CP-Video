@@ -15,4 +15,6 @@ dependencies = [
     "tornado>=6.4.2",
     "pyzmq>=26.4.0",
     "jupyter-kernel-gateway>=3.0.1",
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.5",
 ]

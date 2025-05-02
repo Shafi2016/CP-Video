@@ -296,6 +296,7 @@ print(json.dumps(connection_info_json))
           const executeResult = await new Promise((resolve) => {
             // Set up a timer to limit execution time
             const timeoutId = setTimeout(() => {
+              console.log('Direct execution timed out, trying to force terminate');
               resolve({
                 cellId: request.cellId,
                 status: 'error',
@@ -305,7 +306,7 @@ print(json.dumps(connection_info_json))
                   traceback: ['Execution timed out. The kernel may be busy or not responding.']
                 }]
               });
-            }, 10000); // 10 second timeout
+            }, 30000); // 30 second timeout - increased from 10 seconds
             
             // Execute the code using the Python subprocess approach which is more reliable
             // This is a temporary solution until we implement the WebSocket communication properly
@@ -314,6 +315,7 @@ print(json.dumps(connection_info_json))
 import json
 import sys
 import io
+import traceback
 from contextlib import redirect_stdout, redirect_stderr
 
 # The code to execute
@@ -327,14 +329,34 @@ result = {
     'outputs': []
 }
 
+# Import common modules to make available in the execution environment
+try:
+    import numpy as np
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
+# Create a persistent namespace for execution (so variables are remembered between cells)
+try:
+    namespace
+except NameError:
+    namespace = {}
+    # Add builtins that might be useful
+    if HAS_MATPLOTLIB:
+        namespace.update({
+            'np': np,
+            'plt': plt,
+            'matplotlib': matplotlib
+        })
+
 # Capture stdout and stderr
 f_stdout = io.StringIO()
 f_stderr = io.StringIO()
 
 try:
-    # Create a namespace for execution
-    namespace = {}
-    
     # Redirect stdout and stderr
     with redirect_stdout(f_stdout), redirect_stderr(f_stderr):
         # Execute the code
@@ -359,8 +381,24 @@ try:
             'text': stderr_output.splitlines() if stderr_output else []
         })
     
-    # If there's no output, add a success message
-    if not stdout_output and not stderr_output:
+    # If matplotlib is available, check for figures to display
+    if HAS_MATPLOTLIB and plt.get_fignums():
+        for fig_num in plt.get_fignums():
+            fig = plt.figure(fig_num)
+            img_data = io.BytesIO()
+            fig.savefig(img_data, format='png')
+            img_data.seek(0)
+            import base64
+            result['outputs'].append({
+                'output_type': 'display_data',
+                'data': {
+                    'image/png': base64.b64encode(img_data.getvalue()).decode('utf-8')
+                }
+            })
+            plt.close(fig)
+    
+    # If there are no outputs, add a success message
+    if not result['outputs']:
         result['outputs'].append({
             'output_type': 'stream',
             'name': 'stdout',
@@ -368,11 +406,14 @@ try:
         })
         
 except Exception as e:
+    # Get detailed traceback
+    tb_lines = traceback.format_exception(type(e), e, e.__traceback__)
+    
     # Handle execution errors
     result['status'] = 'error'
     result['outputs'] = [{
         'output_type': 'error',
-        'traceback': [str(e)]
+        'traceback': tb_lines
     }]
 
 # Print the results as JSON
@@ -583,7 +624,7 @@ except TypeError as e:
             }]
           }
         });
-      }, 10000); // 10 seconds timeout
+      }, 30000); // 30 seconds timeout - increased from 10
 
       // Execute the script
       exec(`python3 ${tempScriptPath}`, (error, stdout, stderr) => {

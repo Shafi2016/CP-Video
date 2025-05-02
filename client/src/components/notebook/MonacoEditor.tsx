@@ -9,6 +9,25 @@ interface MonacoEditorProps {
   height?: number;
 }
 
+// Configure Monaco worker
+self.MonacoEnvironment = {
+  getWorkerUrl: function (_moduleId: any, label: string) {
+    if (label === 'json') {
+      return './monaco-editor/esm/vs/language/json/json.worker?worker';
+    }
+    if (label === 'css' || label === 'scss' || label === 'less') {
+      return './monaco-editor/esm/vs/language/css/css.worker?worker';
+    }
+    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      return './monaco-editor/esm/vs/language/html/html.worker?worker';
+    }
+    if (label === 'typescript' || label === 'javascript') {
+      return './monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+    }
+    return './monaco-editor/esm/vs/editor/editor.worker?worker';
+  }
+};
+
 export default function MonacoEditor({
   language,
   value,
@@ -28,10 +47,10 @@ export default function MonacoEditor({
         if (cancelMonacoInit) return;
 
         if (editorRef.current && !editorInstanceRef.current) {
-          // Create editor
-          editorInstanceRef.current = monaco.editor.create(editorRef.current, {
+          // Set up basic editor configuration
+          const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
             value,
-            language,
+            language: language === 'python' ? 'python' : language,
             theme: document.documentElement.classList.contains("dark") 
               ? "vs-dark" 
               : "vs",
@@ -45,12 +64,18 @@ export default function MonacoEditor({
             tabSize: 4,
             fontSize: 14,
             fontFamily: "'Fira Code', monospace",
-          });
+          };
+
+          // Create editor
+          editorInstanceRef.current = monaco.editor.create(editorRef.current, editorOptions);
 
           // Add event listener for changes
           editorInstanceRef.current.onDidChangeModelContent(() => {
             onChange(editorInstanceRef.current?.getValue() || "");
           });
+
+          // Focus editor when created
+          editorInstanceRef.current.focus();
         }
       } catch (error) {
         console.error("Failed to load Monaco Editor:", error);
@@ -61,39 +86,15 @@ export default function MonacoEditor({
 
     initMonaco();
 
-    const handleThemeChange = () => {
-      if (editorInstanceRef.current) {
-        const isDark = document.documentElement.classList.contains("dark");
-        monaco.editor.setTheme(isDark ? "vs-dark" : "vs");
-      }
-    };
-
-    // Add observer for theme changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (
-          mutation.type === "attributes" &&
-          mutation.attributeName === "class"
-        ) {
-          handleThemeChange();
-        }
-      });
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
+    // Clean up
     return () => {
       cancelMonacoInit = true;
-      observer.disconnect();
       if (editorInstanceRef.current) {
         editorInstanceRef.current.dispose();
         editorInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [language]);
 
   // Update editor value when prop changes
   useEffect(() => {

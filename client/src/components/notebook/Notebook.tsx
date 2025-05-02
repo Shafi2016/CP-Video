@@ -7,8 +7,10 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useNotebook } from "@/hooks/use-notebook";
+import { useJupyter } from "@/hooks/use-jupyter";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface NotebookProps {
   initialNotebook?: NotebookType;
@@ -17,6 +19,8 @@ interface NotebookProps {
 
 export function Notebook({ initialNotebook, id }: NotebookProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { toast } = useToast();
+  const { connectToKernel, isConnected } = useJupyter();
   
   const {
     notebook,
@@ -34,6 +38,28 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
     isLoading,
   } = useNotebook(id, initialNotebook);
 
+  // Connect to kernel when component mounts
+  useEffect(() => {
+    const initKernel = async () => {
+      try {
+        await connectToKernel();
+        toast({
+          title: "Kernel Connected",
+          description: "Successfully connected to Python kernel",
+        });
+      } catch (error) {
+        console.error("Failed to connect to kernel:", error);
+        toast({
+          title: "Connection Failed",
+          description: "Could not connect to Python kernel",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initKernel();
+  }, [connectToKernel, toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -49,6 +75,25 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
       </div>
     );
   }
+
+  // Add auto-connect functionality if not connected
+  const handleExecuteCell = async (cellId?: string) => {
+    if (!cellId) return;
+    
+    if (!isConnected) {
+      try {
+        await connectToKernel();
+      } catch (error) {
+        toast({
+          title: "Connection Failed",
+          description: "Could not connect to kernel. Execution aborted.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    executeCell(cellId);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -69,7 +114,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
           activeCell={activeCell}
           onTitleChange={updateNotebookTitle}
           onAddCell={addCell}
-          onRunCell={executeCell}
+          onRunCell={handleExecuteCell}
           onSaveNotebook={saveNotebook}
           onMoveCellUp={(id) => moveCell(id, "up")}
           onMoveCellDown={(id) => moveCell(id, "down")}
@@ -90,7 +135,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
                   isActive={cell.id === activeCell}
                   onClick={() => setActiveCell(cell.id)}
                   onChange={(newContent) => updateCellContent(cell.id, newContent)}
-                  onExecute={() => executeCell(cell.id)}
+                  onExecute={() => handleExecuteCell(cell.id)}
                 />
               ) : (
                 <MarkdownCell
@@ -107,7 +152,10 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
           <div className="flex justify-center mb-10">
             <Button
               variant="outline"
-              onClick={addCell}
+              onClick={() => {
+                // Use a no-parameter click handler to avoid type issues
+                addCell("code");
+              }}
               className="border-dashed"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -120,14 +168,18 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
         <div className="bg-neutral-100 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 py-1 px-4 text-xs text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
           <div className="flex items-center">
             <div className={`h-2 w-2 rounded-full mr-2 ${
-              notebook.kernel?.status === "busy" 
-                ? "bg-yellow-500" 
-                : notebook.kernel?.status === "dead" 
-                  ? "bg-red-500" 
-                  : "bg-green-500"
+              isConnected ? 
+                notebook.kernel?.status === "busy" 
+                  ? "bg-yellow-500" 
+                  : notebook.kernel?.status === "dead" 
+                    ? "bg-red-500" 
+                    : "bg-green-500"
+                : "bg-red-500"
             }`}></div>
             <span>
-              {notebook.kernel?.name || "No Kernel"} | {notebook.kernel?.status || "Not connected"}
+              {isConnected ? 
+                `${notebook.kernel?.name || "Python"} | ${notebook.kernel?.status || "idle"}` :
+                "Not connected to kernel"}
             </span>
           </div>
           <div>

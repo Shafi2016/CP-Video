@@ -442,6 +442,18 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
     [notebook.cells, toast, updateCellContent]
   );
 
+  const clearCellOutputs = useCallback(
+    (id: string) => {
+      setNotebook((prev) => ({
+        ...prev,
+        cells: prev.cells.map((c) =>
+          c.id === id ? { ...c, outputs: [] } : c
+        ),
+      }));
+    },
+    []
+  );
+
   return {
     notebook,
     activeCell,
@@ -455,6 +467,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
     deleteCell,
     copyCellContent,
     cutCellContent,
+    clearCellOutputs,
     isLoading,
   };
 }

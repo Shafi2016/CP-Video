@@ -56,6 +56,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
     deleteCell,
     copyCellContent,
     cutCellContent,
+    clearCellOutputs,
     isLoading,
   } = useNotebook(id, safeInitialNotebook);
 

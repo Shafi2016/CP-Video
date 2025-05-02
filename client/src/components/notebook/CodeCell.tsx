@@ -13,6 +13,7 @@ interface CodeCellProps {
   onClick: () => void;
   onChange: (content: string) => void;
   onExecute: () => void;
+  onClearOutputs?: () => void;
   isPresentationMode?: boolean;
   presentationSpeed?: number;
 }
@@ -23,6 +24,7 @@ export default function CodeCell({
   onClick,
   onChange,
   onExecute,
+  onClearOutputs,
   isPresentationMode = false,
   presentationSpeed = 50,
 }: CodeCellProps) {
@@ -200,8 +202,30 @@ export default function CodeCell({
       )}
       
       {cell.outputs.length > 0 && (
-        <div className="output-area mt-4 border-t border-neutral-200 dark:border-neutral-700 pt-4 overflow-auto" style={{ maxHeight: '800px' }}>
-          <OutputArea outputs={cell.outputs} />
+        <div className="output-container">
+          <div className="flex justify-between items-center border-t border-neutral-200 dark:border-neutral-700 mt-4 pt-2 pb-2">
+            <div className="text-xs text-neutral-500">Output:</div>
+            <button 
+              className="p-1 text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 flex items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Call the clear outputs function passed from parent
+                onClearOutputs?.()
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+              </svg>
+              <span className="ml-1">Clear output</span>
+            </button>
+          </div>
+          <div className="output-area overflow-auto pb-8" style={{ maxHeight: 'none' }}>
+            <OutputArea outputs={cell.outputs} />
+          </div>
         </div>
       )}
     </div>

@@ -125,42 +125,92 @@ export class JupyterGateway {
         
         ws.onmessage = (event) => {
           try {
-            const message = JSON.parse(event.data);
+            // Parse message data (handle Buffer or string)
+            const data = typeof event.data === 'string' ? event.data : event.data.toString();
+            const message = JSON.parse(data);
+            console.log('Received WS message:', message);
+            
+            // Check if the message has the required structure
+            if (!message.header || !message.content) {
+              console.warn('Invalid message format:', message);
+              return;
+            }
+            
             const msgType = message.header.msg_type;
             const content = message.content;
             
             // Handle different message types
             switch (msgType) {
               case 'status':
+                console.log('Status message:', content);
                 if (content.execution_state === 'idle') {
                   // Kernel is idle, we're done processing messages
                   console.log('Kernel is idle, finishing execution');
-                  cleanup();
+                  // Only finish if we've collected outputs
+                  // Add a small delay to ensure we get all outputs
+                  if (outputs.length > 0) {
+                    setTimeout(() => cleanup(), 500);
+                  }
                 }
                 break;
                 
               case 'execute_input':
+                console.log('Execute input:', content);
                 executionCount = content.execution_count;
                 break;
                 
               case 'execute_reply':
+                console.log('Execute reply:', content);
                 // Check execution status
                 executionStatus = content.status;
                 if (content.status === 'error') {
                   console.error('Execute reply error:', content);
+                } else if (content.status === 'ok' && outputs.length === 0) {
+                  // If execution finished but no outputs, set a default output
+                  setTimeout(() => {
+                    if (outputs.length === 0) {
+                      console.log('No outputs collected but execution successful');
+                      cleanup();
+                    }
+                  }, 1000); // Wait a bit for any pending output messages
                 }
                 break;
                 
               case 'stream':
-                outputs.push({
-                  output_type: 'stream',
-                  name: content.name, // stdout or stderr
-                  text: content.text.split('\n')
-                });
+                console.log('Stream output:', content);
+                // For stream messages, create/append to stream output
+                let stream = outputs.find(o => o.output_type === 'stream' && o.name === content.name);
+                
+                if (!stream) {
+                  stream = {
+                    output_type: 'stream',
+                    name: content.name, // stdout or stderr
+                    text: []
+                  };
+                  outputs.push(stream);
+                }
+                
+                // Split the text into lines and append
+                if (content.text) {
+                  const lines = content.text.endsWith('\n') 
+                    ? content.text.slice(0, -1).split('\n') 
+                    : content.text.split('\n');
+                    
+                  stream.text = stream.text.concat(lines.filter((line: string) => line.length > 0));
+                }
                 break;
                 
               case 'display_data':
+                console.log('Display data:', content);
+                outputs.push({
+                  output_type: msgType,
+                  data: content.data,
+                  metadata: content.metadata
+                });
+                break;
+                
               case 'execute_result':
+                console.log('Execute result:', content);
                 outputs.push({
                   output_type: msgType,
                   data: content.data,
@@ -170,6 +220,7 @@ export class JupyterGateway {
                 break;
                 
               case 'error':
+                console.log('Error:', content);
                 executionStatus = 'error';
                 outputs.push({
                   output_type: 'error',
@@ -178,6 +229,9 @@ export class JupyterGateway {
                   traceback: content.traceback
                 });
                 break;
+                
+              default:
+                console.log(`Unhandled message type: ${msgType}`, message);
             }
           } catch (err) {
             console.error('Error processing WebSocket message:', err);

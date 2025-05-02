@@ -155,7 +155,7 @@ export default function CodeCell({
         </div>
       </div>
       {isPresentationMode ? (
-        <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-4">
+        <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-6 mb-4">
           {isPresenting ? (
             <div>
               <pre className="font-mono text-sm whitespace-pre-wrap mb-4">{displayedCode}</pre>
@@ -200,7 +200,7 @@ export default function CodeCell({
       )}
       
       {cell.outputs.length > 0 && (
-        <div className="output-area mt-2 border-t border-neutral-200 dark:border-neutral-700 pt-2">
+        <div className="output-area mt-4 border-t border-neutral-200 dark:border-neutral-700 pt-4 overflow-auto" style={{ maxHeight: '800px' }}>
           <OutputArea outputs={cell.outputs} />
         </div>
       )}

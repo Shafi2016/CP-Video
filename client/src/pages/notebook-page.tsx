@@ -21,5 +21,8 @@ export default function NotebookPage() {
     }
   }, [error, setLocation]);
 
+  // Add some debugging to see the notebook data
+  console.log('Notebook data:', notebook);
+  
   return <Notebook id={notebookId} initialNotebook={notebook} />;
 }

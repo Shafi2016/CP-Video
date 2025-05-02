@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Book, FileText, Terminal, Settings, FileCode } from "lucide-react";
+import { Book, FileText, Settings, FileCode } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,6 @@ export function Sidebar() {
   const navItems = [
     { label: "Notebooks", icon: <Book className="h-5 w-5 mr-3" />, path: "/" },
     { label: "Files", icon: <FileText className="h-5 w-5 mr-3" />, path: "/files" },
-    { label: "Console", icon: <Terminal className="h-5 w-5 mr-3" />, path: "/console" },
     { label: "Settings", icon: <Settings className="h-5 w-5 mr-3" />, path: "/settings" },
   ];
 

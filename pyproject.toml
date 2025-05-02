@@ -14,4 +14,5 @@ dependencies = [
     "jupyter-core>=5.7.2",
     "tornado>=6.4.2",
     "pyzmq>=26.4.0",
+    "jupyter-kernel-gateway>=3.0.1",
 ]

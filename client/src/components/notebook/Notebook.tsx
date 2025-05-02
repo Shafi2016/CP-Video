@@ -127,40 +127,73 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
 
         {/* Notebook content */}
         <ScrollArea className="flex-1 p-4 bg-white dark:bg-neutral-900" id="notebook-content">
-          {notebook.cells.map((cell: Cell) => (
-            <div className="relative group" key={cell.id}>
-              {cell.type === "code" ? (
-                <CodeCell
-                  cell={cell}
-                  isActive={cell.id === activeCell}
-                  onClick={() => setActiveCell(cell.id)}
-                  onChange={(newContent) => updateCellContent(cell.id, newContent)}
-                  onExecute={() => handleExecuteCell(cell.id)}
-                />
-              ) : (
-                <MarkdownCell
-                  cell={cell}
-                  isActive={cell.id === activeCell}
-                  onClick={() => setActiveCell(cell.id)}
-                  onChange={(newContent) => updateCellContent(cell.id, newContent)}
-                />
-              )}
-            </div>
-          ))}
+          <div className="max-w-5xl mx-auto pb-20"> {/* Added container with max-width and bottom padding */}
+            <div className="space-y-8"> {/* Increased space between cells */}
+              {notebook.cells.map((cell: Cell) => (
+                <div className="relative group" key={cell.id}>
+                  {cell.type === "code" ? (
+                    <CodeCell
+                      cell={cell}
+                      isActive={cell.id === activeCell}
+                      onClick={() => setActiveCell(cell.id)}
+                      onChange={(newContent) => updateCellContent(cell.id, newContent)}
+                      onExecute={() => handleExecuteCell(cell.id)}
+                    />
+                  ) : (
+                    <MarkdownCell
+                      cell={cell}
+                      isActive={cell.id === activeCell}
+                      onClick={() => setActiveCell(cell.id)}
+                      onChange={(newContent) => updateCellContent(cell.id, newContent)}
+                    />
+                  )}
+                  
+                  {/* Add cell button after each cell (only shown on hover) */}
+                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        addCell(undefined, cell.id);
+                      }}
+                      className="h-8 rounded-full bg-white dark:bg-neutral-800 shadow-sm"
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
 
-          {/* Add cell button at the end */}
-          <div className="flex justify-center mb-10">
-            <Button
-              variant="outline"
-              onClick={() => {
-                // Use a no-parameter click handler to avoid type issues
-                addCell("code");
-              }}
-              className="border-dashed"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Cell
-            </Button>
+              {/* Main add cell button at the end */}
+              <div className="flex justify-center mt-10 mb-10">
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addCell("code");
+                    }}
+                    className="border-dashed px-6"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Code Cell
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addCell("markdown");
+                    }}
+                    className="border-dashed px-6"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Markdown Cell
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </ScrollArea>
 

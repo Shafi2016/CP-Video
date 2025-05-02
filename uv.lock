@@ -624,6 +624,23 @@ wheels = [
 ]
 
 [[package]]
+name = "jupyter-kernel-gateway"
+version = "3.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jupyter-client" },
+    { name = "jupyter-core" },
+    { name = "jupyter-server" },
+    { name = "requests" },
+    { name = "tornado" },
+    { name = "traitlets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/f4/6672cae9f6f36be7566496dbe2f78a8e39d4db73b36c2911c83320dd7027/jupyter_kernel_gateway-3.0.1.tar.gz", hash = "sha256:900690c4c0e796867355468d685f7fa1cf3c7775d08e871c157f77d65fbd6d7f", size = 54607 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3d/a2/e0a4616fde099b71ef996e5ae117451bc80b15f89807d1f3db9298644209/jupyter_kernel_gateway-3.0.1-py3-none-any.whl", hash = "sha256:9f74a2f4ff9f03737bcab79f44ae0f6473ee32deb30fce00b8f05adcdd023f03", size = 53007 },
+]
+
+[[package]]
 name = "jupyter-lsp"
 version = "2.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1192,6 +1209,7 @@ dependencies = [
     { name = "jupyter" },
     { name = "jupyter-client" },
     { name = "jupyter-core" },
+    { name = "jupyter-kernel-gateway" },
     { name = "notebook" },
     { name = "pyzmq" },
     { name = "tornado" },
@@ -1206,6 +1224,7 @@ requires-dist = [
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "jupyter-client", specifier = ">=8.6.3" },
     { name = "jupyter-core", specifier = ">=5.7.2" },
+    { name = "jupyter-kernel-gateway", specifier = ">=3.0.1" },
     { name = "notebook", specifier = ">=7.4.1" },
     { name = "pyzmq", specifier = ">=26.4.0" },
     { name = "tornado", specifier = ">=6.4.2" },

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { JupyterService } from "./jupyter-service";
+import { jupyterBridge } from "./jupyter-bridge";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -10,30 +10,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  // Initialize Jupyter service
-  const jupyterService = new JupyterService();
+  // Initialize Jupyter server
+  try {
+    await jupyterBridge.initializeJupyterServer();
+    console.log('Jupyter server initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Jupyter server:', error);
+  }
   
   // WebSocket connection handling
   wss.on('connection', (ws: WebSocket) => {
     console.log('Client connected to WebSocket');
     
-    // Set up Jupyter service for this connection
-    const cleanup = jupyterService.registerClient(ws);
-    
-    ws.on('message', async (message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        await jupyterService.handleMessage(data, ws);
-      } catch (error) {
-        console.error('Error handling WebSocket message:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          content: {
-            error: 'Invalid message format'
-          }
-        }));
-      }
-    });
+    // Set up Jupyter bridge for this connection
+    const cleanup = jupyterBridge.handleConnection(ws);
     
     ws.on('close', () => {
       console.log('Client disconnected from WebSocket');

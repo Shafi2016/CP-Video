@@ -181,6 +181,8 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
                       onClick={() => setActiveCell(cell.id)}
                       onChange={(newContent) => updateCellContent(cell.id, newContent)}
                       onExecute={() => handleExecuteCell(cell.id)}
+                      isPresentationMode={isPresentationMode}
+                      presentationSpeed={presentationSpeed}
                     />
                   ) : (
                     <MarkdownCell
@@ -191,51 +193,55 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
                     />
                   )}
                   
-                  {/* Add cell button after each cell (only shown on hover) */}
-                  <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        addCell(undefined, cell.id);
-                      }}
-                      className="h-8 rounded-full bg-white dark:bg-neutral-800 shadow-sm"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {/* Add cell button after each cell (only shown on hover and when not in presentation mode) */}
+                  {!isPresentationMode && (
+                    <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          addCell(undefined, cell.id);
+                        }}
+                        className="h-8 rounded-full bg-white dark:bg-neutral-800 shadow-sm"
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              {/* Main add cell button at the end */}
-              <div className="flex justify-center mt-10 mb-10">
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      addCell("code");
-                    }}
-                    className="border-dashed px-6"
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Code Cell
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      addCell("markdown");
-                    }}
-                    className="border-dashed px-6"
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Markdown Cell
-                  </Button>
+              {/* Main add cell button at the end - only shown when not in presentation mode */}
+              {!isPresentationMode && (
+                <div className="flex justify-center mt-10 mb-10">
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        addCell("code");
+                      }}
+                      className="border-dashed px-6"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Code Cell
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        addCell("markdown");
+                      }}
+                      className="border-dashed px-6"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Markdown Cell
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </ScrollArea>

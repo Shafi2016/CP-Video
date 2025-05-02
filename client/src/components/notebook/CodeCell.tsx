@@ -39,6 +39,64 @@ export default function CodeCell({
     const newHeight = Math.max(100, Math.min(500, lineCount * 20));
     setEditorHeight(newHeight);
   }, [cell.content]);
+  
+  // Reset presentation state when presentation mode changes
+  useEffect(() => {
+    if (!isPresentationMode) {
+      setIsPresenting(false);
+      setPresentationIndex(0);
+      setDisplayedCode("");
+      if (presentationIntervalRef.current) {
+        clearInterval(presentationIntervalRef.current);
+        presentationIntervalRef.current = undefined;
+      }
+    }
+  }, [isPresentationMode]);
+  
+  // Function to start presenting code character by character
+  const startPresenting = () => {
+    if (isPresenting) {
+      // Stop the presentation
+      setIsPresenting(false);
+      if (presentationIntervalRef.current) {
+        clearInterval(presentationIntervalRef.current);
+        presentationIntervalRef.current = undefined;
+      }
+      return;
+    }
+    
+    // Start the presentation
+    setIsPresenting(true);
+    setPresentationIndex(0);
+    setDisplayedCode("");
+    
+    // Calculate typing speed based on presentationSpeed (1-100)
+    // Lower presentationSpeed = slower typing (more milliseconds between characters)
+    // Higher presentationSpeed = faster typing
+    const typingDelay = Math.max(10, Math.min(200, 210 - presentationSpeed * 2));
+    
+    presentationIntervalRef.current = window.setInterval(() => {
+      setPresentationIndex(prevIndex => {
+        if (prevIndex >= cell.content.length) {
+          clearInterval(presentationIntervalRef.current);
+          presentationIntervalRef.current = undefined;
+          setIsPresenting(false);
+          return prevIndex;
+        }
+        setDisplayedCode(prev => prev + cell.content[prevIndex]);
+        return prevIndex + 1;
+      });
+    }, typingDelay);
+  };
+  
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (presentationIntervalRef.current) {
+        clearInterval(presentationIntervalRef.current);
+      }
+    };
+  }, []);
 
   const getExecutionCountDisplay = () => {
     switch (cell.execution_state) {
@@ -93,14 +151,35 @@ export default function CodeCell({
           </button>
         </div>
       </div>
-      <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden">
-        <MonacoEditor
-          language="python"
-          value={cell.content}
-          onChange={onChange}
-          height={editorHeight}
-        />
-      </div>
+      {isPresentationMode ? (
+        <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden p-4">
+          {isPresenting ? (
+            <pre className="font-mono text-sm whitespace-pre-wrap">{displayedCode}</pre>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10">
+              <p className="text-neutral-500 dark:text-neutral-400 mb-4">
+                Click the button below to start the code presentation
+              </p>
+              <Button 
+                onClick={startPresenting}
+                className="bg-primary text-white"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                Present Code
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="code-block bg-neutral-50 dark:bg-neutral-800 rounded-md overflow-hidden">
+          <MonacoEditor
+            language="python"
+            value={cell.content}
+            onChange={onChange}
+            height={editorHeight}
+          />
+        </div>
+      )}
       
       {cell.outputs.length > 0 && (
         <div className="output-area mt-2 border-t border-neutral-200 dark:border-neutral-700 pt-2">

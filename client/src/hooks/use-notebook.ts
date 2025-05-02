@@ -1,10 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Notebook, Cell, CellType } from "@/types";
 import { useJupyter } from "@/hooks/use-jupyter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { v4 as uuidv4 } from "uuid";
+
+interface UndoHistory {
+  type: 'delete' | 'cut' | 'clear';
+  cells?: Cell[];
+  cellId?: string;
+  content?: string;
+  index?: number;
+}
 
 const createEmptyNotebook = (): Notebook => ({
   id: uuidv4(),
@@ -55,6 +63,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
     
   const [notebook, setNotebook] = useState<Notebook>(safeInitialNotebook);
   const [activeCell, setActiveCell] = useState<string | null>(null);
+  const [history, setHistory] = useState<UndoHistory[]>([]);
   const { toast } = useToast();
   const {
     connectToKernel,
@@ -366,6 +375,17 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         });
         return;
       }
+
+      // Store current state for undo
+      const cellToDelete = notebook.cells.find(cell => cell.id === id);
+      const cellIndex = notebook.cells.findIndex(cell => cell.id === id);
+      
+      if (cellToDelete && cellIndex !== -1) {
+        setHistory(prev => [
+          ...prev, 
+          { type: 'delete', cellId: id, cells: [cellToDelete], index: cellIndex }
+        ]);
+      }
       
       setNotebook((prev) => {
         const newCells = prev.cells.filter((cell) => cell.id !== id);
@@ -388,7 +408,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         };
       });
     },
-    [activeCell, notebook.cells.length, toast]
+    [activeCell, notebook.cells.length, notebook.cells, toast]
   );
 
   const copyCellContent = useCallback(
@@ -421,6 +441,12 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
       const cell = notebook.cells.find((c) => c.id === id);
       
       if (cell) {
+        // Store current state for undo
+        setHistory(prev => [
+          ...prev, 
+          { type: 'cut', cellId: id, content: cell.content }
+        ]);
+
         navigator.clipboard.writeText(cell.content).then(
           () => {
             updateCellContent(id, "");
@@ -444,6 +470,16 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
 
   const clearCellOutputs = useCallback(
     (id: string) => {
+      const cell = notebook.cells.find(c => c.id === id);
+      
+      if (cell && cell.outputs.length > 0) {
+        // Store outputs for undo
+        setHistory(prev => [
+          ...prev,
+          { type: 'clear', cellId: id, cells: [{ ...cell }] }
+        ]);
+      }
+      
       setNotebook((prev) => ({
         ...prev,
         cells: prev.cells.map((c) =>
@@ -451,8 +487,72 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         ),
       }));
     },
-    []
+    [notebook.cells]
   );
+
+  // Undo the last action (delete, cut, clear outputs)
+  const undo = useCallback(() => {
+    if (history.length === 0) {
+      toast({
+        description: "Nothing to undo.",
+      });
+      return;
+    }
+
+    // Get the last action
+    const lastAction = history[history.length - 1];
+    
+    // Remove it from history
+    setHistory(prev => prev.slice(0, -1));
+    
+    switch (lastAction.type) {
+      case 'delete':
+        if (lastAction.cells && lastAction.cells.length > 0 && typeof lastAction.index === 'number') {
+          setNotebook(prev => {
+            // Create new cells array with the deleted cell restored at its original position
+            const newCells = [...prev.cells];
+            newCells.splice(lastAction.index, 0, ...lastAction.cells);
+            
+            return {
+              ...prev,
+              cells: newCells
+            };
+          });
+          
+          toast({
+            description: "Restored deleted cell.",
+          });
+        }
+        break;
+        
+      case 'cut':
+        if (lastAction.cellId && lastAction.content) {
+          updateCellContent(lastAction.cellId, lastAction.content);
+          
+          toast({
+            description: "Restored cut content.",
+          });
+        }
+        break;
+        
+      case 'clear':
+        if (lastAction.cellId && lastAction.cells && lastAction.cells.length > 0) {
+          const originalCell = lastAction.cells[0];
+          
+          setNotebook(prev => ({
+            ...prev,
+            cells: prev.cells.map(c => 
+              c.id === lastAction.cellId ? { ...c, outputs: originalCell.outputs } : c
+            )
+          }));
+          
+          toast({
+            description: "Restored cell outputs.",
+          });
+        }
+        break;
+    }
+  }, [history, toast, updateCellContent]);
 
   return {
     notebook,
@@ -468,6 +568,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
     copyCellContent,
     cutCellContent,
     clearCellOutputs,
+    undo, // Add undo function to the returned object
     isLoading,
   };
 }

@@ -13,44 +13,120 @@ interface HighlightedCodeProps {
 
 // Function to add simple syntax highlighting for Python
 const HighlightedCode = ({ code }: HighlightedCodeProps) => {
-  // Apply syntax highlighting by replacing key patterns with styled spans
-  const highlightCode = (code: string) => {
-    // Replace Python comments (# ...)
-    let highlighted = code.replace(
-      /(#.*)$/gm, 
-      '<span class="comment">$1</span>'
-    );
+  // Manual syntax highlighting using styled spans
+  const codeLines = code.split('\n');
+  const keywords = [
+    'import', 'from', 'as', 'def', 'class', 'for', 'while', 'if', 'else', 'elif', 
+    'try', 'except', 'finally', 'with', 'return', 'and', 'or', 'not', 'in', 'is', 
+    'None', 'True', 'False'
+  ];
+  
+  // Process a line to highlight its parts
+  const processLine = (line: string) => {
+    // Process each part of the line (comments, strings, keywords)
+    const parts: React.ReactNode[] = [];
+    let currentIndex = 0;
+    let remainingLine = line;
     
-    // Replace strings ('...' and "...")
-    highlighted = highlighted.replace(
-      /(['"])(.*?)\1/g, 
-      '<span class="string">$1$2$1</span>'
-    );
-    
-    // Replace Python keywords
-    const keywords = ['import', 'from', 'as', 'def', 'class', 'for', 'while', 'if', 'else', 'elif', 'try', 'except', 'finally', 'with', 'return', 'and', 'or', 'not', 'in', 'is', 'None', 'True', 'False'];
-    keywords.forEach(keyword => {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
-      highlighted = highlighted.replace(
-        regex,
-        `<span class="keyword">${keyword}</span>`
+    // Check for comments
+    const commentMatch = line.match(/(#.*)$/);
+    if (commentMatch) {
+      const commentStartIndex = line.indexOf(commentMatch[0]);
+      if (commentStartIndex > 0) {
+        // Process text before comment
+        parts.push(processCodePart(line.substring(0, commentStartIndex)));
+      }
+      // Add the comment with green styling
+      parts.push(
+        <span key={`comment-${commentStartIndex}`} className="text-green-600 dark:text-green-400">
+          {commentMatch[0]}
+        </span>
       );
-    });
+      return parts;
+    }
     
-    // Replace numbers
-    highlighted = highlighted.replace(
-      /\b(\d+(\.\d+)?\b)/g,
-      '<span class="number">$1</span>'
-    );
+    // Check for strings
+    const stringMatches = Array.from(line.matchAll(/(['"])(?:(?!\1).|\\.)*?\1/g));
+    if (stringMatches.length > 0) {
+      let lastIndex = 0;
+      stringMatches.forEach((match, matchIndex) => {
+        const matchStartIndex = match.index!;
+        
+        // Add text before the string
+        if (matchStartIndex > lastIndex) {
+          parts.push(processCodePart(line.substring(lastIndex, matchStartIndex)));
+        }
+        
+        // Add the string with red styling
+        parts.push(
+          <span key={`string-${matchIndex}`} className="text-red-600 dark:text-red-400">
+            {match[0]}
+          </span>
+        );
+        
+        lastIndex = matchStartIndex + match[0].length;
+      });
+      
+      // Add any remaining text after the last string
+      if (lastIndex < line.length) {
+        parts.push(processCodePart(line.substring(lastIndex)));
+      }
+      
+      return parts;
+    }
     
-    return highlighted;
+    // If no special formatting, process the whole line
+    return processCodePart(line);
   };
-
+  
+  // Process a code part (non-comment, non-string) to highlight keywords and numbers
+  const processCodePart = (text: string): React.ReactNode => {
+    // Check for keywords
+    for (const keyword of keywords) {
+      const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'g');
+      const matches = Array.from(text.matchAll(keywordRegex));
+      
+      if (matches.length > 0) {
+        const parts: React.ReactNode[] = [];
+        let lastIndex = 0;
+        
+        matches.forEach((match, matchIndex) => {
+          const matchStartIndex = match.index!;
+          
+          // Add text before the keyword
+          if (matchStartIndex > lastIndex) {
+            parts.push(text.substring(lastIndex, matchStartIndex));
+          }
+          
+          // Add the keyword with blue styling
+          parts.push(
+            <span key={`keyword-${matchIndex}`} className="text-blue-600 dark:text-blue-400 font-semibold">
+              {match[0]}
+            </span>
+          );
+          
+          lastIndex = matchStartIndex + match[0].length;
+        });
+        
+        // Add any remaining text after the last keyword
+        if (lastIndex < text.length) {
+          parts.push(text.substring(lastIndex));
+        }
+        
+        return <>{parts}</>;
+      }
+    }
+    
+    // If no keywords, just return the text
+    return text;
+  };
+  
   return (
-    <pre 
-      className="font-mono text-sm whitespace-pre-wrap mb-4 python-code" 
-      dangerouslySetInnerHTML={{ __html: highlightCode(code) }}
-    />
+    <pre className="font-mono text-sm whitespace-pre-wrap mb-4 python-code">
+      {codeLines.map((line, lineIndex) => (
+        <div key={lineIndex}>{processLine(line)}</div>
+      ))}
+    </pre>
   );
 };
 

@@ -6,31 +6,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { v4 as uuidv4 } from "uuid";
 
-interface UndoHistory {
-  type: 'delete' | 'cut' | 'clear';
-  cells: Cell[];
-  cellId?: string;
-  content?: string;
-  index: number;
-}
-
-interface DeleteHistory extends UndoHistory {
-  type: 'delete';
-  cells: Cell[];
-  index: number;
-}
-
-interface CutHistory extends UndoHistory {
-  type: 'cut';
-  cellId: string;
-  content: string;
-}
-
-interface ClearHistory extends UndoHistory {
-  type: 'clear';
-  cellId: string;
-  cells: Cell[];
-}
+// Using a discriminated union type for safer type handling
+type UndoHistory = 
+  | { type: 'delete'; cells: Cell[]; index: number }
+  | { type: 'cut'; cellId: string; content: string }
+  | { type: 'clear'; cellId: string; cell: Cell };
 
 const createEmptyNotebook = (): Notebook => ({
   id: uuidv4(),
@@ -399,12 +379,10 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
       const cellIndex = notebook.cells.findIndex(cell => cell.id === id);
       
       if (cellToDelete && cellIndex !== -1) {
-        const deleteHistory: DeleteHistory = {
-          type: 'delete',
-          cells: [cellToDelete],
-          index: cellIndex
-        };
-        setHistory(prev => [...prev, deleteHistory]);
+        setHistory(prev => [
+          ...prev, 
+          { type: 'delete', cells: [cellToDelete], index: cellIndex }
+        ]);
       }
       
       setNotebook((prev) => {
@@ -496,7 +474,7 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         // Store outputs for undo
         setHistory(prev => [
           ...prev,
-          { type: 'clear', cellId: id, cells: [{ ...cell }] }
+          { type: 'clear', cellId: id, cell: { ...cell } }
         ]);
       }
       
@@ -556,8 +534,8 @@ export function useNotebook(notebookId?: string, initialNotebook?: Notebook) {
         break;
         
       case 'clear':
-        if (lastAction.cellId && lastAction.cells && Array.isArray(lastAction.cells) && lastAction.cells.length > 0) {
-          const originalCell = lastAction.cells[0];
+        if (lastAction.cellId && lastAction.cell) {
+          const originalCell = lastAction.cell;
           
           setNotebook(prev => ({
             ...prev,

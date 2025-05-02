@@ -20,9 +20,9 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   });
 
   const navItems = [
-    { label: "Notebooks", icon: <Book className="h-5 w-5 mr-3" />, path: "/" },
-    { label: "Files", icon: <FileText className="h-5 w-5 mr-3" />, path: "/files" },
-    { label: "Settings", icon: <Settings className="h-5 w-5 mr-3" />, path: "/settings" },
+    { label: "Notebooks", icon: <Book className="h-5 w-5" />, path: "/" },
+    { label: "Files", icon: <FileText className="h-5 w-5" />, path: "/files" },
+    { label: "Settings", icon: <Settings className="h-5 w-5" />, path: "/settings" },
   ];
 
   return (

@@ -162,6 +162,10 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
           onCutCellContent={cutCellContent}
           mobileSidebarOpen={mobileSidebarOpen}
           setMobileSidebarOpen={setMobileSidebarOpen}
+          isPresentationMode={isPresentationMode}
+          togglePresentationMode={() => setIsPresentationMode(!isPresentationMode)}
+          presentationSpeed={presentationSpeed}
+          setPresentationSpeed={setPresentationSpeed}
         />
 
         {/* Notebook content */}

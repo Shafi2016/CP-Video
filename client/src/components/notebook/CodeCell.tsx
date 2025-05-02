@@ -5,6 +5,7 @@ import MonacoEditor from "./MonacoEditor";
 import { OutputArea } from "./OutputArea";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface CodeCellProps {
   cell: Cell;
@@ -12,6 +13,8 @@ interface CodeCellProps {
   onClick: () => void;
   onChange: (content: string) => void;
   onExecute: () => void;
+  isPresentationMode?: boolean;
+  presentationSpeed?: number;
 }
 
 export default function CodeCell({
@@ -20,9 +23,15 @@ export default function CodeCell({
   onClick,
   onChange,
   onExecute,
+  isPresentationMode = false,
+  presentationSpeed = 50,
 }: CodeCellProps) {
   const [editorHeight, setEditorHeight] = useState(150);
+  const [displayedCode, setDisplayedCode] = useState("");
+  const [isPresenting, setIsPresenting] = useState(false);
+  const [presentationIndex, setPresentationIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const presentationIntervalRef = useRef<number>();
 
   useEffect(() => {
     // Adjust height based on content but with min/max constraints

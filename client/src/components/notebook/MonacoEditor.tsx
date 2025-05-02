@@ -64,6 +64,9 @@ export default function MonacoEditor({
             tabSize: 4,
             fontSize: 14,
             fontFamily: "'Fira Code', monospace",
+            overviewRulerBorder: false,
+            overviewRulerLanes: 0,
+            hideCursorInOverviewRuler: true,
           };
 
           // Create editor
@@ -120,7 +123,11 @@ export default function MonacoEditor({
       <div 
         ref={editorRef} 
         className="font-mono text-sm monaco-editor" 
-        style={{ height: `${height}px` }}
+        style={{ 
+          height: `${height}px`,
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)'
+        }}
       />
     </div>
   );

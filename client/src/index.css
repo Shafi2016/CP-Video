@@ -123,9 +123,34 @@
   .monaco-editor .monaco-editor-background,
   .monaco-editor .margin-view-overlays,
   .monaco-editor .view-lines,
-  .monaco-editor-container div[role="presentation"] {
+  .monaco-editor-container div[role="presentation"],
+  .monaco-editor .decorationsOverviewRuler,
+  .monaco-editor .decorationsOverviewRuler,
+  .monaco-editor,
+  .monaco-editor * {
     border-color: transparent !important;
     outline: none !important;
+  }
+  
+  /* Remove the gutter border specifically */
+  .monaco-editor .margin,
+  .monaco-editor .margin *,
+  .monaco-editor .glyph-margin,
+  .monaco-editor .glyph-margin *,
+  .monaco-editor .margin-view-overlays,
+  .monaco-editor .margin-view-overlays .cgmr,
+  .margin-view-overlays .line-numbers,
+  .margin-view-overlays .line-numbers div {
+    border-right: none !important;
+    border-color: transparent !important;
+    border-left: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Explicitly target line numbers */
+  .margin-view-overlays .line-numbers {
+    color: #999 !important;
+    border: none !important;
   }
   
   /* Fix Monaco editor container border */

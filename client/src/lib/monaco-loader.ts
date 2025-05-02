@@ -27,7 +27,13 @@ export function loadMonaco() {
             'editor.selectionBackground': '#d7d4f0',
             'editor.lineHighlightBackground': '#f6f8fa',
             'editorCursor.foreground': '#24292e',
-            'editorWhitespace.foreground': '#959da5'
+            'editorWhitespace.foreground': '#959da5',
+            'editorIndentGuide.background': '#f6f8fa',
+            'editorIndentGuide.activeBackground': '#f6f8fa',
+            'editorOverviewRuler.border': '#ffffff00',
+            'editor.lineHighlightBorder': '#ffffff00',
+            'editorLineNumber.foreground': '#959da5',
+            'editorLineNumber.activeForeground': '#24292e'
           }
         });
 
@@ -50,7 +56,13 @@ export function loadMonaco() {
             'editor.selectionBackground': '#264f78',
             'editor.lineHighlightBackground': '#2d2d30',
             'editorCursor.foreground': '#d4d4d4',
-            'editorWhitespace.foreground': '#3e3e42'
+            'editorWhitespace.foreground': '#3e3e42',
+            'editorIndentGuide.background': '#1e1e1e',
+            'editorIndentGuide.activeBackground': '#1e1e1e',
+            'editorOverviewRuler.border': '#ffffff00',
+            'editor.lineHighlightBorder': '#ffffff00',
+            'editorLineNumber.foreground': '#6e6e6e',
+            'editorLineNumber.activeForeground': '#d4d4d4'
           }
         });
 

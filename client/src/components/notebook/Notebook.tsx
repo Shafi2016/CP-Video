@@ -11,6 +11,7 @@ import { useJupyter } from "@/hooks/use-jupyter";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 interface NotebookProps {
   initialNotebook?: NotebookType;
@@ -21,6 +22,7 @@ export function Notebook({ initialNotebook, id }: NotebookProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [presentationSpeed, setPresentationSpeed] = useState(50); // Default medium speed (1-100 scale)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorage('sidebar-collapsed', false);
   const { toast } = useToast();
   const { connectToKernel, isConnected } = useJupyter();
   

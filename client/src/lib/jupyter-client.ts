@@ -37,9 +37,22 @@ class JupyterClient {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
+      console.log(`Connecting to WebSocket at ${wsUrl}`);
       this.socket = new WebSocket(wsUrl);
 
+      // Set a connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.socket && this.socket.readyState !== WebSocket.OPEN) {
+          console.error("WebSocket connection timeout");
+          this.socket.close();
+          this.socket = null;
+          this.connectionPromise = null;
+          reject(new Error("WebSocket connection timeout"));
+        }
+      }, 5000); // 5 second timeout
+
       this.socket.onopen = () => {
+        clearTimeout(connectionTimeout);
         console.log("WebSocket connection established");
         this.openHandlers.forEach((handler) => handler());
         
@@ -51,21 +64,29 @@ class JupyterClient {
       };
 
       this.socket.onclose = (event) => {
+        clearTimeout(connectionTimeout);
         console.log("WebSocket connection closed", event);
         this.closeHandlers.forEach((handler) => handler());
         this.socket = null;
         this.connectionPromise = null;
         this.kernelId = null;
         
-        if (!event.wasClean) {
-          reject(new Error(`WebSocket connection closed unexpectedly: ${event.code}`));
+        // Always resolve to allow retry logic
+        if (event.wasClean) {
+          resolve();
+        } else {
+          console.warn(`WebSocket connection closed unexpectedly: ${event.code}`);
+          resolve(); // Still resolve to not block the UI
         }
       };
 
       this.socket.onerror = (event) => {
+        clearTimeout(connectionTimeout);
         console.error("WebSocket error:", event);
         this.errorHandlers.forEach((handler) => handler(event));
-        reject(new Error("WebSocket connection error"));
+        this.socket = null;
+        this.connectionPromise = null;
+        resolve(); // Resolve to allow retry
       };
 
       this.socket.onmessage = (event) => {

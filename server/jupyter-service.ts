@@ -75,72 +75,70 @@ export class JupyterService {
       // Start a Python process for simple code execution
       const process = spawn('python3', [
         '-c',
-        `
-        import json
-        import sys
-        import traceback
-        import io
-        import contextlib
-        
-        def execute_code(code):
-            # Capture stdout and stderr
-            f = io.StringIO()
-            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
-                try:
-                    # Execute the code
-                    exec(code)
-                    status = "ok"
-                    error = None
-                    traceback_text = None
-                except Exception as e:
-                    status = "error"
-                    error = str(e)
-                    traceback_text = traceback.format_exc()
-            
-            output = f.getvalue()
-            
-            return {
-                "status": status,
-                "output": output,
-                "error": error,
-                "traceback": traceback_text
-            }
+        `import json
+import sys
+import traceback
+import io
+import contextlib
 
-        # Monitor stdin for commands
-        while True:
-            try:
-                line = input()
-                if not line.strip():
-                    continue
-                    
-                command_data = json.loads(line)
-                
-                if command_data.get("type") == "execute":
-                    code = command_data.get("code", "")
-                    cell_id = command_data.get("cell_id", "")
-                    
-                    result = execute_code(code)
-                    
-                    # Send the result back
-                    print(json.dumps({
-                        "type": "result",
-                        "cell_id": cell_id,
-                        "status": result["status"],
-                        "output": result["output"],
-                        "error": result["error"],
-                        "traceback": result["traceback"]
-                    }))
-                    sys.stdout.flush()
-                elif command_data.get("type") == "exit":
-                    break
-            except Exception as e:
-                print(json.dumps({
-                    "type": "error",
-                    "error": str(e),
-                    "traceback": traceback.format_exc()
-                }))
-                sys.stdout.flush()
-        `
+def execute_code(code):
+    # Capture stdout and stderr
+    f = io.StringIO()
+    with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+        try:
+            # Execute the code
+            exec(code)
+            status = "ok"
+            error = None
+            traceback_text = None
+        except Exception as e:
+            status = "error"
+            error = str(e)
+            traceback_text = traceback.format_exc()
+    
+    output = f.getvalue()
+    
+    return {
+        "status": status,
+        "output": output,
+        "error": error,
+        "traceback": traceback_text
+    }
+
+# Monitor stdin for commands
+while True:
+    try:
+        line = input()
+        if not line.strip():
+            continue
+            
+        command_data = json.loads(line)
+        
+        if command_data.get("type") == "execute":
+            code = command_data.get("code", "")
+            cell_id = command_data.get("cell_id", "")
+            
+            result = execute_code(code)
+            
+            # Send the result back
+            print(json.dumps({
+                "type": "result",
+                "cell_id": cell_id,
+                "status": result["status"],
+                "output": result["output"],
+                "error": result["error"],
+                "traceback": result["traceback"]
+            }))
+            sys.stdout.flush()
+        elif command_data.get("type") == "exit":
+            break
+    except Exception as e:
+        print(json.dumps({
+            "type": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }))
+        sys.stdout.flush()`
       ]);
       
       // Store the kernel process

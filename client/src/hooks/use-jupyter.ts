@@ -90,13 +90,24 @@ export function useJupyter() {
           reject(error);
         });
 
-        // Set a timeout for execution
+        // Set a timeout for execution (reduced to 10 seconds for better user feedback)
         setTimeout(() => {
           if (executionCallbacks.current.has(cellId)) {
             executionCallbacks.current.delete(cellId);
-            reject(new Error("Execution timed out"));
+            
+            // Send execution result with error
+            const timeoutError: ExecuteResponse = {
+              cellId,
+              status: 'error',
+              outputs: [{
+                id: Math.random().toString(),
+                output_type: 'error',
+                traceback: ['Execution timed out. The kernel may be busy or not responding.']
+              }]
+            };
+            resolve(timeoutError);
           }
-        }, 60000); // 1 minute timeout
+        }, 10000); // 10 second timeout
       });
     },
     [isConnected]

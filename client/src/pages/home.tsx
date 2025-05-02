@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,10 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
   
   const { data: notebooks, isLoading } = useQuery<NotebookListItem[]>({
-    queryKey: ['/api/notebooks'],
+    queryKey: ["/api/notebooks"],
   });
 
   const filteredNotebooks = notebooks?.filter(
@@ -93,6 +94,8 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <NotebookUpload onSuccess={() => {
                     // Refresh the notebooks list
+                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks/recent"] });
                   }} />
                   <Link href="/notebook">
                     <Button className="bg-primary">
@@ -128,30 +131,32 @@ export default function Home() {
             ) : filteredNotebooks && filteredNotebooks.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
                 {filteredNotebooks.map((notebook) => (
-                  <Link key={notebook.id} href={`/notebook/${notebook.id}`}>
-                    <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center">
-                          <FileCode className="h-5 w-5 mr-2 text-primary" />
-                          {notebook.title}
-                        </CardTitle>
-                        <CardDescription>
-                          Last modified: {new Date(notebook.lastModified).toLocaleDateString()}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate">
-                          {notebook.path}
-                        </p>
-                      </CardContent>
-                      <CardFooter className="flex justify-between pt-2">
-                        <span className="text-xs text-neutral-500">Python</span>
-                        <Button variant="ghost" size="sm">
-                          Open
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  </Link>
+                  <div key={notebook.id}>
+                    <Link href={`/notebook/${notebook.id}`}>
+                      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="flex items-center">
+                            <FileCode className="h-5 w-5 mr-2 text-primary" />
+                            {notebook.title}
+                          </CardTitle>
+                          <CardDescription>
+                            Last modified: {new Date(notebook.lastModified).toLocaleDateString()}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 truncate">
+                            {notebook.path || "No path"}
+                          </p>
+                        </CardContent>
+                        <CardFooter className="flex justify-between pt-2">
+                          <span className="text-xs text-neutral-500">Python</span>
+                          <Button variant="ghost" size="sm">
+                            Open
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -166,6 +171,8 @@ export default function Home() {
                 <div className="flex gap-3 justify-center mt-6">
                   <NotebookUpload onSuccess={() => {
                     // Refresh the notebooks list
+                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/notebooks/recent"] });
                   }} />
                   <Link href="/notebook">
                     <Button className="bg-primary">

@@ -14,10 +14,20 @@ interface VideoRecorderProps {
 }
 
 interface TeachingProviderStatus {
+  provider?: TeachingProviderChoice;
   activeProvider: string;
   model: string;
   label: string;
   configured: boolean;
+  localAvailable?: boolean;
+  cloudModels?: TeachingModelOption[];
+  localModels?: TeachingModelOption[];
+}
+
+interface TeachingModelOption {
+  value: string;
+  label: string;
+  provider: "google-gemma" | "ollama-gemma";
 }
 
 // Timing constants matching CodeCell.tsx
@@ -82,6 +92,7 @@ type RecordingStatus = "idle" | "running" | "preparing" | "recording" | "process
 type VoiceOption = "none" | "cedar" | "marin" | "alloy" | "ash" | "ballad" | "coral" | "rachel" | "adam" | "antoni" | "bella" | "josh" | "elli" | "haytham" | "marcotrox";
 type NarrationStyle = "educational" | "professional" | "casual";
 type NarrationDuration = "short" | "medium" | "long";
+type TeachingProviderChoice = "google-gemma" | "ollama-gemma" | "auto";
 type VideoFormat = "landscape" | "shorts";
 
 const INSTRUCTOR_PACING_MS: Record<NarrationDuration, {
@@ -408,15 +419,54 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
   const [renderPreviewUrl, setRenderPreviewUrl] = useState<string | null>(null);
   const [hqPreviewMuted, setHqPreviewMuted] = useState(false);
   const [teachingProvider, setTeachingProvider] = useState<TeachingProviderStatus | null>(null);
+  const [aiProvider, setAiProvider] = useState<TeachingProviderChoice>("google-gemma");
+  const [aiModel, setAiModel] = useState("gemma-4-31b-it");
 
   const hasVoiceNarration = enableVoice && selectedVoice !== "none";
+  const cloudModelOptions = teachingProvider?.cloudModels?.length
+    ? teachingProvider.cloudModels
+    : [{ value: "gemma-4-31b-it", label: "Gemma 4 31B", provider: "google-gemma" as const }];
+  const localModelOptions = teachingProvider?.localModels?.length
+    ? teachingProvider.localModels
+    : [
+      { value: "gemma4:e2b", label: "gemma4:e2b", provider: "ollama-gemma" as const },
+      { value: "gemma4:e4b", label: "gemma4:e4b", provider: "ollama-gemma" as const },
+      { value: "gemma4", label: "gemma4", provider: "ollama-gemma" as const },
+    ];
+  const activeModelOptions = aiProvider === "ollama-gemma" ? localModelOptions : cloudModelOptions;
+  const selectedAiModel = activeModelOptions.some((option) => option.value === aiModel)
+    ? aiModel
+    : activeModelOptions[0]?.value || aiModel;
+  const selectedTeachingLabel = aiProvider === "ollama-gemma"
+    ? `Local Gemma 4 (${selectedAiModel})`
+    : `Cloud Gemma 4 (${selectedAiModel})`;
+  const selectedProviderConfigured = aiProvider === "ollama-gemma"
+    ? teachingProvider?.localAvailable !== false
+    : teachingProvider?.configured !== false;
+  const handleAiProviderChange = (nextProvider: TeachingProviderChoice) => {
+    setAiProvider(nextProvider);
+    const nextOptions = nextProvider === "ollama-gemma" ? localModelOptions : cloudModelOptions;
+    if (nextOptions[0]?.value) {
+      setAiModel(nextOptions[0].value);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/voice/provider", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
-        if (!cancelled && data) setTeachingProvider(data);
+        if (!cancelled && data) {
+          setTeachingProvider(data);
+          if (data.provider === "google-gemma" || data.provider === "ollama-gemma" || data.provider === "auto") {
+            setAiProvider(data.provider);
+          } else if (data.activeProvider === "google-gemma" || data.activeProvider === "ollama-gemma") {
+            setAiProvider(data.activeProvider);
+          }
+          if (typeof data.model === "string" && data.model.trim()) {
+            setAiModel(data.model);
+          }
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -1218,6 +1268,8 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
           voice: selectedVoice,
           format: "mp3",
           context: narrationInstructions.trim() || undefined,
+          aiProvider,
+          aiModel: selectedAiModel,
         }),
       });
 
@@ -1242,7 +1294,7 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
       console.error("[VideoRecorder] Voice generation error:", error);
       throw error;
     }
-  }, [narrationStyle, selectedVoice, narrationInstructions, narrationDuration]);
+  }, [narrationStyle, selectedVoice, narrationInstructions, narrationDuration, aiProvider, selectedAiModel]);
 
   const startHqRender = useCallback(async () => {
     try {
@@ -1294,6 +1346,8 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
           style: narrationStyle,
           duration: narrationDuration,
           context: narrationInstructions.trim() || undefined,
+          aiProvider,
+          aiModel: selectedAiModel,
         }),
       });
 
@@ -1360,7 +1414,7 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
       setHqPreviewMuted(false);
       setStatus("error");
     }
-  }, [cells, fontSize, hasVoiceNarration, narrationDuration, narrationInstructions, narrationStyle, onRunAll, presentationSpeed, selectedVoice, videoFormat]);
+  }, [aiProvider, cells, fontSize, hasVoiceNarration, narrationDuration, narrationInstructions, narrationStyle, onRunAll, presentationSpeed, selectedAiModel, selectedVoice, videoFormat]);
 
   // Main recording logic - runs all cells first, then records
   const startRecording = useCallback(async () => {
@@ -2101,7 +2155,6 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
   const estimatedDuration = calculateTotalDuration();
   const resolutionLabel = videoFormat === "shorts" ? "1080×1920" : "1920×1080";
   const isHqPreviewActive = Boolean(renderPreviewUrl && status !== "idle" && status !== "error" && status !== "complete");
-
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className={`bg-neutral-900 rounded-2xl shadow-2xl w-full flex flex-col border border-neutral-700 transition-all duration-300 ${isFullscreen ? 'max-w-full h-full max-h-full' : 'max-w-4xl max-h-[85vh]'}`}>
@@ -2113,13 +2166,13 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
             {teachingProvider && (
               <span
                 className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                  teachingProvider.configured
+                  selectedProviderConfigured
                     ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
                     : "border-amber-500/40 bg-amber-500/10 text-amber-300"
                 }`}
-                title={`Teaching model: ${teachingProvider.model}`}
+                title={`Teaching model: ${selectedAiModel}`}
               >
-                Powered by {teachingProvider.label}
+                Powered by {selectedTeachingLabel}
               </span>
             )}
           </div>
@@ -2256,8 +2309,8 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
               </p>
               {teachingProvider && (
                 <p className="text-xs text-neutral-500 mt-2">
-                  Teaching script provider: {teachingProvider.label}
-                  {!teachingProvider.configured ? " (not configured)" : ""}
+                  Teaching script provider: {selectedTeachingLabel}
+                  {!selectedProviderConfigured ? " (not configured)" : ""}
                 </p>
               )}
             </div>
@@ -2323,6 +2376,31 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
                         <option value="short">Short</option>
                         <option value="medium">Medium</option>
                         <option value="long">Long (more detailed)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-neutral-400 mb-1 block">Teaching brain</label>
+                      <select
+                        value={aiProvider}
+                        onChange={(e) => handleAiProviderChange(e.target.value as TeachingProviderChoice)}
+                        className="w-full bg-neutral-700 text-white text-sm rounded-lg px-3 py-2 border border-neutral-600 focus:border-purple-500 focus:outline-none"
+                      >
+                        <option value="google-gemma">Cloud Gemma 4</option>
+                        <option value="ollama-gemma">Local Ollama</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-neutral-400 mb-1 block">Model</label>
+                      <select
+                        value={selectedAiModel}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        className="w-full bg-neutral-700 text-white text-sm rounded-lg px-3 py-2 border border-neutral-600 focus:border-purple-500 focus:outline-none"
+                      >
+                        {activeModelOptions.map((option) => (
+                          <option key={`${option.provider}:${option.value}`} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

@@ -23,11 +23,45 @@ export interface TeachingProviderStatus {
   label: string;
   configured: boolean;
   localAvailable: boolean;
+  cloudModels: TeachingModelOption[];
+  localModels: TeachingModelOption[];
+}
+
+export interface TeachingModelOption {
+  value: string;
+  label: string;
+  provider: "google-gemma" | "ollama-gemma";
 }
 
 const DEFAULT_GEMMA_MODEL = "gemma-4-31b-it";
-const DEFAULT_OLLAMA_MODEL = "gemma4";
+const DEFAULT_GEMMA_MODELS = ["gemma-4-31b-it"];
+const DEFAULT_OLLAMA_MODEL = "gemma4:e2b";
+const DEFAULT_OLLAMA_MODELS = ["gemma4:e2b", "gemma4:e4b", "gemma4"];
 const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
+
+function parseModelList(value: string | undefined, fallback: string[]) {
+  const models = (value || "")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+  return Array.from(new Set(models.length ? models : fallback));
+}
+
+function getConfiguredGoogleModels() {
+  return parseModelList(process.env.GEMMA_MODELS, [process.env.GEMMA_MODEL || DEFAULT_GEMMA_MODEL, ...DEFAULT_GEMMA_MODELS]);
+}
+
+function getConfiguredOllamaModels() {
+  return parseModelList(process.env.OLLAMA_MODELS, [process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL, ...DEFAULT_OLLAMA_MODELS]);
+}
+
+function toModelOptions(models: string[], provider: "google-gemma" | "ollama-gemma"): TeachingModelOption[] {
+  return models.map((model) => ({
+    value: model,
+    label: provider === "google-gemma" ? model.replace(/^gemma-4-/, "Gemma 4 ") : model,
+    provider,
+  }));
+}
 
 export function normalizeTeachingProvider(value?: string): TeachingProviderName | "auto" {
   const provider = (value || "google-gemma").trim().toLowerCase();
@@ -39,11 +73,7 @@ export function normalizeTeachingProvider(value?: string): TeachingProviderName 
 
 export function getTeachingProviderStatus(): TeachingProviderStatus {
   const provider = normalizeTeachingProvider(process.env.AI_PROVIDER);
-  const localAvailable = Boolean(
-    process.env.OLLAMA_BASE_URL ||
-    process.env.OLLAMA_MODEL ||
-    provider === "ollama-gemma"
-  );
+  const localAvailable = Boolean(process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL);
   const activeProvider: TeachingProviderName =
     provider === "auto"
       ? isGoogleApiKeyPresent()
@@ -65,6 +95,8 @@ export function getTeachingProviderStatus(): TeachingProviderStatus {
     label: activeProvider === "ollama-gemma" ? `Local Gemma 4 (${model})` : activeProvider === "google-gemma" ? `Gemma 4 (${model})` : model,
     configured: activeProvider === "google-gemma" ? isGoogleApiKeyPresent() : activeProvider === "ollama-gemma" ? localAvailable : Boolean(process.env.OPENAI_API_KEY),
     localAvailable,
+    cloudModels: toModelOptions(getConfiguredGoogleModels(), "google-gemma"),
+    localModels: toModelOptions(getConfiguredOllamaModels(), "ollama-gemma"),
   };
 }
 

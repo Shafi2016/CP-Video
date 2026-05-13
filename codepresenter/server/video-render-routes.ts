@@ -8,6 +8,7 @@ import ffmpegStatic from "ffmpeg-static";
 import { chromium, type Browser, type BrowserContext } from "playwright";
 import { resolveFFmpegExecutable } from "./ffmpeg-utils";
 import { voiceService, type Cell, type GeneratedScript, type VoiceOption } from "./services/voice-service";
+import { normalizeTeachingProvider, type TeachingProviderName } from "./services/ai-providers";
 
 type VideoFormat = "landscape" | "shorts" | "square";
 type NarrationStyle = "educational" | "professional" | "casual";
@@ -23,6 +24,8 @@ interface RenderRequestBody {
   style?: NarrationStyle;
   duration?: NarrationDuration;
   context?: string;
+  aiProvider?: TeachingProviderName | "auto";
+  aiModel?: string;
 }
 
 function normalizeFontSize(fontSize?: number) {
@@ -45,8 +48,10 @@ interface RenderJob {
   error?: string;
   createdAt: number;
   cells: Cell[];
-  request: Required<Omit<RenderRequestBody, "cells" | "context">> & {
+  request: Required<Omit<RenderRequestBody, "cells" | "context" | "aiProvider" | "aiModel">> & {
     context?: string;
+    aiProvider?: TeachingProviderName | "auto";
+    aiModel?: string;
     frontendOrigin: string;
   };
   script?: GeneratedScript;
@@ -300,6 +305,8 @@ async function runRenderJob(jobId: string) {
           style: job.request.style,
           duration: job.request.duration,
           context: job.request.context,
+          aiProvider: job.request.aiProvider,
+          aiModel: job.request.aiModel,
         },
         job.request.voice as VoiceOption,
         "mp3",
@@ -422,6 +429,8 @@ videoRenderRouter.post("/render", async (req: Request, res: Response) => {
       style: body.style || "educational",
       duration: body.duration || "medium",
       context: body.context?.trim() || undefined,
+      aiProvider: body.aiProvider ? normalizeTeachingProvider(body.aiProvider) : undefined,
+      aiModel: typeof body.aiModel === "string" && body.aiModel.trim() ? body.aiModel.trim() : undefined,
       frontendOrigin: (process.env.FRONTEND_ORIGIN || process.env.VITE_FRONTEND_ORIGIN || `${protocol}://${host}`).replace(/\/$/, ""),
     },
   };

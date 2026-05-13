@@ -37,7 +37,7 @@ const DEFAULT_GEMMA_MODEL = "gemma-4-31b-it";
 const DEFAULT_GEMMA_MODELS = ["gemma-4-31b-it"];
 const DEFAULT_OLLAMA_MODEL = "gemma4:e2b";
 const DEFAULT_OLLAMA_MODELS = ["gemma4:e2b", "gemma4:e4b", "gemma4"];
-const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
+const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
 
 function parseModelList(value: string | undefined, fallback: string[]) {
   const models = (value || "")
@@ -189,20 +189,31 @@ async function generateOllamaGemma(
 ): Promise<TeachingScriptProviderResponse> {
   const baseUrl = (process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, "");
   const model = request.model?.trim() || process.env.OLLAMA_MODEL || DEFAULT_OLLAMA_MODEL;
-  const response = await fetch(`${baseUrl}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      system: request.systemPrompt,
-      prompt: request.userPrompt,
-      stream: false,
-      options: {
-        temperature: 0.35,
-        num_predict: request.maxOutputTokens,
-      },
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        system: request.systemPrompt,
+        prompt: request.userPrompt,
+        stream: false,
+        options: {
+          temperature: 0.35,
+          num_predict: request.maxOutputTokens,
+        },
+      }),
+    });
+  } catch (error: any) {
+    const causeCode = error?.cause?.code || error?.cause?.errors?.[0]?.code;
+    if (causeCode === "ECONNREFUSED" || error?.message === "fetch failed") {
+      throw new Error(
+        `Local Ollama is not reachable at ${baseUrl}. Start Ollama first, then run "ollama pull ${model}" if the model is not installed. Cloud Gemma is still available by selecting Cloud Gemma 4.`,
+      );
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+client/dist/
+server/dist/
+.vite/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+keys/
+.keys/
+*.key
+*.pem
+openai_key.txt
+
+# Runtime data
+temp/
+tmp/
+uploads/
+logs/
+*.log
+*.pid
+*.tmp
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.backup
+
+# Local generated Windows cache artifact
+%SystemDrive%/

@@ -1,0 +1,47 @@
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store
+
+# Build outputs
+/dist
+/client/dist
+/server/dist
+/public
+
+# Vite cache
+/.vite
+
+# Env and secrets
+.env
+*.env*
+openai_key.txt
+
+# Git
+.git
+.gitignore
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Media and large assets
+/media
+/uploads
+/attached_assets
+
+# Python caches
+__pycache__
+*.pyc
+
+# Misc
+*.log
+*.tmp
+/tmp
+*.backup
+Dockerfile.backup
+cloudbuild.yaml.backup

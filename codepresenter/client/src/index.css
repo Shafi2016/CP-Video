@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 60 4.8% 95.9%;
+  --accent-foreground: 24 9.8% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 20 14.3% 4.1%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html,
+  body,
+  #__next {
+    height: 100%;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    /* Allow vertical scrolling so long pages (e.g., LandingPage) are fully visible */
+    overflow-y: auto;
+  }
+
+  /* Force a Colab-ish dark grey specifically for code cells - NUCLEAR OPTION */
+  .monaco-grey,
+  .monaco-grey *,
+  .monaco-grey .monaco-editor,
+  .monaco-grey .monaco-editor *,
+  .monaco-grey .monaco-editor .monaco-editor-background,
+  .monaco-grey .monaco-editor .margin,
+  .monaco-grey .monaco-editor .view-lines,
+  .monaco-grey .monaco-editor .margin-view-overlays,
+  .monaco-grey .monaco-editor .focused .monaco-editor-background,
+  .monaco-grey .monaco-editor .focused .margin,
+  .monaco-grey .monaco-editor .focused .view-lines,
+  .monaco-grey .monaco-editor .focused .margin-view-overlays,
+  .monaco-grey .monaco-editor-container,
+  .monaco-grey .monaco-editor-container *,
+  .monaco-grey .monaco-editor-container div[role="presentation"],
+  .monaco-grey div,
+  .monaco-grey div[class*="monaco"],
+  .monaco-grey div[class*="editor"] {
+    background-color: #6b7280 !important;
+    /* <- change this hex to taste */
+    background: #6b7280 !important;
+  }
+
+  /* Keep overlays/lines transparent so the background reads consistently */
+  .monaco-grey .monaco-editor .view-overlays,
+  .monaco-grey .monaco-editor .lines-content {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+
+  /* Ensure tooltips/suggest are visible above everything */
+  .monaco-grey .monaco-editor .overflow-guard {
+    overflow: visible !important;
+  }
+
+  /* Prevent Monaco from creating internal scrollbars - make it expand with content */
+  .monaco-editor .monaco-scrollable-element {
+    overflow-y: hidden !important;
+  }
+
+  .monaco-grey .monaco-editor .editor-widget,
+  .monaco-grey .monaco-editor .suggest-widget,
+  .monaco-grey .monaco-editor .parameter-hints-widget,
+  .monaco-grey .monaco-hover {
+    z-index: 60 !important;
+  }
+
+  /* Python syntax highlighting */
+  .python-code {
+    position: relative;
+    color: #383a42;
+  }
+
+  .dark .python-code {
+    color: #abb2bf;
+  }
+
+  /* Comment highlighting - green like Jupyter */
+  .python-code .comment,
+  .python-code [data-token="comment"] {
+    color: #22863a !important;
+  }
+
+  /* String highlighting - red like Jupyter */
+  .python-code .string,
+  .python-code [data-token="string"] {
+    color: #d73a49 !important;
+  }
+
+  /* Keywords highlighting - blue like Jupyter */
+  .python-code .keyword,
+  .python-code [data-token="keyword"] {
+    color: #0366d6 !important;
+    font-weight: bold;
+  }
+
+  /* Function highlighting - blue like Jupyter */
+  .python-code .function,
+  .python-code [data-token="function"] {
+    color: #005cc5 !important;
+  }
+
+  /* Number highlighting - blue like Jupyter */
+  .python-code .number,
+  .python-code [data-token="number"] {
+    color: #0086b3 !important;
+  }
+
+  /* Class name highlighting - yellow-orange like Jupyter */
+  .python-code .class-name,
+  .python-code [data-token="class-name"] {
+    color: #e36209 !important;
+  }
+
+  /* Built-in highlighting - cyan like Jupyter */
+  .python-code .builtin,
+  .python-code [data-token="builtin"] {
+    color: #6f42c1 !important;
+  }
+
+  /* Fix for Monaco Editor */
+  .monaco-editor .view-line span {
+    display: inline-block;
+  }
+
+  /* Remove blue border lines from Monaco editor */
+  .monaco-editor .focused .monaco-editor-background,
+  .monaco-editor .focused .margin-view-overlays,
+  .monaco-editor .focused .view-lines,
+  .monaco-editor .focused .monaco-editor-background,
+  .monaco-editor .focused .margin,
+  .monaco-editor .monaco-editor-background,
+  .monaco-editor .margin-view-overlays,
+  .monaco-editor .view-lines,
+  .monaco-editor-container div[role="presentation"],
+  .monaco-editor .decorationsOverviewRuler,
+  .monaco-editor .decorationsOverviewRuler,
+  .monaco-editor,
+  .monaco-editor * {
+    border-color: transparent !important;
+    outline: none !important;
+  }
+
+  /* Remove the gutter border specifically */
+  .monaco-editor .margin,
+  .monaco-editor .margin *,
+  .monaco-editor .glyph-margin,
+  .monaco-editor .glyph-margin *,
+  .monaco-editor .margin-view-overlays,
+  .monaco-editor .margin-view-overlays .cgmr,
+  .margin-view-overlays .line-numbers,
+  .margin-view-overlays .line-numbers div {
+    border-right: none !important;
+    border-color: transparent !important;
+    border-left: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Explicitly target line numbers */
+  .margin-view-overlays .line-numbers {
+    color: #999 !important;
+    border: none !important;
+  }
+
+  /* Fix Monaco editor container border */
+  .monaco-editor {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius);
+  }
+}
+
+/* Monaco overflow overrides: force expansion with content, no internal scrollbars */
+.monaco-editor .monaco-scrollable-element {
+  overflow: visible !important;
+}
+
+.monaco-editor .monaco-scrollable-element>.scrollbar {
+  display: none !important;
+}
+
+.monaco-editor .view-lines {
+  overflow: visible !important;
+}
+
+.monaco-editor .overflow-guard {
+  overflow: visible !important;
+}
+
+.monaco-editor {
+  overflow: visible !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  overflow: visible !important;
+}
+
+/* --- AI Live Blog write toolbar buttons --- */
+.format-btn {
+  padding: 6px 12px;
+  border: 1px solid #e1e5e9;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.format-btn:hover {
+  background: #f8fafc;
+}
+
+.format-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Placeholder for editable blocks */
+.editable:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  /* slate-400 */
+}

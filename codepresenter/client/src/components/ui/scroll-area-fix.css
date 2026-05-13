@@ -1,0 +1,20 @@
+/* Hide the scroll button/arrow that appears at the bottom of ScrollArea */
+[data-radix-scroll-area-corner],
+[data-radix-scroll-area-corner-button],
+.radix-scroll-area-corner,
+.radix-scroll-area-thumb-position,
+[data-radix-scroll-area-thumb-position] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Hide any element with upward arrow at the bottom of the scroll area */
+.radix-scroll-area-scrollbar button {
+  display: none !important;
+}
+
+/* Additional catch-all for any scrollbar buttons */
+[role="scrollbar"] button {
+  display: none !important;
+}

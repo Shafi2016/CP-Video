@@ -199,13 +199,16 @@ function splitTextForTts(text: string, maxChars: number = MAX_TTS_CHARS_PER_REQU
 
 function stripMarkdownFences(text: string): string {
   // Models sometimes wrap the JSON in ```json ... ``` (or ``` ... ```).
-  // Strip the outermost fence so the brace walker sees clean JSON.
-  const trimmed = text.trim();
-  const fenceMatch = /^```(?:json|JSON)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
-  if (fenceMatch) {
-    return fenceMatch[1];
+  // Strip the fence even if the model forgets the final closing fence.
+  let trimmed = text.trim();
+  const openingFence = /^```(?:json|JSON)?\s*\r?\n?/.exec(trimmed);
+  if (openingFence) {
+    trimmed = trimmed.slice(openingFence[0].length).trim();
   }
-  return text;
+  if (trimmed.endsWith("```")) {
+    trimmed = trimmed.slice(0, -3).trim();
+  }
+  return trimmed;
 }
 
 function extractJsonObjects(text: string): string[] {
@@ -261,6 +264,54 @@ function extractJsonObjects(text: string): string[] {
   return objects;
 }
 
+function extractLikelyJsonPayloads(text: string): string[] {
+  const source = stripMarkdownFences(text);
+  const firstBrace = source.indexOf("{");
+  if (firstBrace < 0) return [];
+  return [source.slice(firstBrace)];
+}
+
+function closeUnclosedJson(candidate: string): string | null {
+  const source = stripMarkdownFences(candidate).trim();
+  if (!source.startsWith("{")) return null;
+
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+    if (char === "{") stack.push("}");
+    if (char === "[") stack.push("]");
+    if ((char === "}" || char === "]") && stack[stack.length - 1] === char) {
+      stack.pop();
+    }
+  }
+
+  let repaired = source;
+  if (inString) repaired += "\"";
+  repaired = repaired.replace(/,\s*$/, "");
+  repaired += stack.reverse().join("");
+  repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+  return repaired === source ? null : repaired;
+}
+
 /**
  * Try to coerce a candidate string into something JSON.parse will accept.
  * Returns ordered variants to try (best guesses first).
@@ -278,6 +329,7 @@ function buildParseVariants(candidate: string): string[] {
 
   push(candidate);
   push(stripMarkdownFences(candidate));
+  push(closeUnclosedJson(candidate));
 
   // If V8 reports "Unexpected non-whitespace character after JSON at
   // position N", the candidate contains a fully valid JSON value followed by
@@ -303,6 +355,9 @@ function buildParseVariants(candidate: string): string[] {
 
 function parseScriptJson(outputText: string): any {
   const candidates = extractJsonObjects(outputText);
+  if (!candidates.length) {
+    candidates.push(...extractLikelyJsonPayloads(outputText));
+  }
   if (!candidates.length) {
     console.warn(
       "[VoiceService] parseScriptJson: no JSON objects found in model output. First 300 chars:",

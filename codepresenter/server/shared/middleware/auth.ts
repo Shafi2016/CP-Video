@@ -93,6 +93,10 @@ export function setupAccessGate(
             p === '/' ||
             p.startsWith('/api/access/') ||
             p.startsWith('/api/health') ||
+            p === '/render-mode' ||
+            p.startsWith('/render-mode') ||
+            p.startsWith('/uploads') ||
+            (req.method === 'GET' && p.startsWith('/api/video/render/')) ||
             p.startsWith('/assets') ||
             p.startsWith('/public') ||
             p.startsWith('/favicon') ||
@@ -118,8 +122,6 @@ export function setupAccessGate(
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        // For frontend routes, we MUST let it pass through to Vite/Express static serving
-        // so that index.html loads and the React `<AccessGate/>` component can render the login UI.
-        return next();
+        return res.status(401).type('html').send(accessHtml);
     });
 }

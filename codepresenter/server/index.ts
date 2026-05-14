@@ -103,8 +103,8 @@ app.use(createLoggingMiddleware());
 // Access gate
 setupAccessGate(
     app,
-    ['/codepresenter', '/notebooks', '/notebook', '/open', '/files'],
-    ['/api/video/render'],
+    ['/'],
+    [],
     process.env.COOKIE_DOMAIN
 );
 

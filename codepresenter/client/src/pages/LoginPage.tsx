@@ -13,6 +13,13 @@ function getAuthErrorMessage(error: unknown) {
     if (firebaseCode.includes('wrong-password')) return 'Incorrect password. Please try again.';
     if (firebaseCode.includes('invalid-credential')) return 'Email or password is incorrect.';
     if (firebaseCode.includes('too-many-requests')) return 'Too many attempts. Please try again later.';
+    if (firebaseCode.includes('unauthorized-domain')) return 'This domain is not authorized in Firebase Authentication settings.';
+    if (firebaseCode.includes('operation-not-allowed')) return 'This sign-in method is not enabled in Firebase Authentication.';
+    if (firebaseCode.includes('api-key-not-valid')) return 'The Firebase API key is not valid for this deployment.';
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
   }
 
   return 'Unable to sign in right now. Please try again.';

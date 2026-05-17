@@ -12,6 +12,13 @@ function getSignupErrorMessage(error: unknown) {
     if (firebaseCode.includes('email-already-in-use')) return 'This email is already in use.';
     if (firebaseCode.includes('weak-password')) return 'Password must be at least 6 characters.';
     if (firebaseCode.includes('too-many-requests')) return 'Too many attempts. Please try again later.';
+    if (firebaseCode.includes('unauthorized-domain')) return 'This domain is not authorized in Firebase Authentication settings.';
+    if (firebaseCode.includes('operation-not-allowed')) return 'This sign-in method is not enabled in Firebase Authentication.';
+    if (firebaseCode.includes('api-key-not-valid')) return 'The Firebase API key is not valid for this deployment.';
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
   }
 
   return 'Unable to create your account right now. Please try again.';

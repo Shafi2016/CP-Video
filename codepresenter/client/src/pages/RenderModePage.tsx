@@ -118,7 +118,7 @@ function RenderOutput({ outputs, visible, typography }: { outputs?: CellOutput[]
   if (!visible || !outputs?.length) return null;
 
   return (
-    <div ref={boxRef} className="mt-4 max-h-[28vh] overflow-y-auto rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+    <div ref={boxRef} className="mt-5 min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-300 bg-white p-5 shadow-sm">
       <div className="mb-2 font-semibold uppercase tracking-[0.18em] text-slate-500" style={{ fontSize: `${typography.labelSize}px` }}>Output</div>
       <div className="space-y-4">
         {outputs.map((output, index) => {
@@ -165,9 +165,14 @@ function CodeCellView({ cell, item, nowMs, isPast, typography }: { cell: Cell; i
 
   useEffect(() => {
     if (codeBoxRef.current) {
-      codeBoxRef.current.scrollTop = codeBoxRef.current.scrollHeight;
+      const box = codeBoxRef.current;
+      const scrollToBottom = () => {
+        box.scrollTop = box.scrollHeight;
+      };
+      scrollToBottom();
+      requestAnimationFrame(scrollToBottom);
     }
-  }, [visibleCode]);
+  }, [visibleCode, showOutput]);
 
   return (
     <div className="flex h-full flex-col rounded-lg border-2 border-blue-500 bg-neutral-50 shadow-sm">
@@ -178,7 +183,14 @@ function CodeCellView({ cell, item, nowMs, isPast, typography }: { cell: Cell; i
           </div>
         </div>
         <div className="flex min-h-0 flex-1 flex-col p-6 bg-neutral-50">
-          <div ref={codeBoxRef} className={`min-h-[12rem] overflow-y-auto ${showOutput && hasOutput ? "max-h-[34vh]" : "max-h-[56vh] flex-1"}`}>
+          <div
+            ref={codeBoxRef}
+            className={`min-h-0 overflow-y-auto rounded-md border border-slate-200 bg-white px-4 py-3 ${
+              showOutput && hasOutput
+                ? "h-[29vh] max-h-[29vh] flex-none"
+                : "max-h-[56vh] flex-1"
+            }`}
+          >
             <div className="font-mono text-neutral-900" style={{ fontSize: `${typography.codeFontSize}px`, lineHeight: `${typography.codeLineHeight}px` }}>
               <PythonHighlightedCode code={visibleCode} />
             </div>
@@ -232,26 +244,42 @@ export default function RenderModePage() {
 
     async function load() {
       if (!jobId) {
+        (window as any).__renderError = "Missing jobId in render-mode URL.";
+        (window as any).__renderStatus = "error";
         setError("Missing jobId in render-mode URL.");
         return;
       }
 
+      (window as any).__renderStatus = "loading";
       for (let attempt = 0; attempt < 600; attempt += 1) {
         const response = await fetch(`/api/video/render/${encodeURIComponent(jobId)}/data`);
         if (response.ok) {
           const json = await response.json();
-          if (!cancelled) setData(json);
+          if (!cancelled) {
+            (window as any).__renderStatus = "ready";
+            setData(json);
+          }
           return;
         }
         if (response.status !== 409 && response.status !== 404) {
-          if (!cancelled) setError(`Render data fetch failed (HTTP ${response.status}).`);
+          if (!cancelled) {
+            const message = `Render data fetch failed (HTTP ${response.status}).`;
+            (window as any).__renderError = message;
+            (window as any).__renderStatus = "error";
+            setError(message);
+          }
           return;
         }
         if (cancelled) return;
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      if (!cancelled) setError("Render job data was not ready after 10 minutes.");
+      if (!cancelled) {
+        const message = "Render job data was not ready after 10 minutes.";
+        (window as any).__renderError = message;
+        (window as any).__renderStatus = "error";
+        setError(message);
+      }
     }
 
     void load();
@@ -264,6 +292,8 @@ export default function RenderModePage() {
     if (!data) return;
 
     let raf = 0;
+    let interval = 0;
+    let complete = false;
     const start = performance.now();
     const previewAudio = data.audioPath
       ? new Audio(`${data.audioPath}${data.audioPath.includes("?") ? "&" : "?"}previewTs=${Date.now()}`)
@@ -288,7 +318,8 @@ export default function RenderModePage() {
       }
     }
 
-    const tick = () => {
+    const updateClock = () => {
+      if (complete) return;
       const wallElapsed = Math.max(0, Math.round(performance.now() - start));
       const audioElapsed = previewAudio && Number.isFinite(previewAudio.currentTime)
         ? Math.max(0, Math.round(previewAudio.currentTime * 1000))
@@ -304,23 +335,39 @@ export default function RenderModePage() {
         ? Math.max(audioElapsed, wallElapsed)
         : wallElapsed;
       setNowMs(elapsed);
+      (window as any).__renderNowMs = elapsed;
 
       const progress = Math.min(100, (elapsed / Math.max(1, data.totalDurationMs)) * 100);
+      (window as any).__renderProgress = progress;
       console.log(`CP_PROGRESS:${progress.toFixed(2)}`);
 
       if (elapsed >= data.totalDurationMs + 800) {
+        complete = true;
         (window as any).__renderComplete = true;
+        (window as any).__renderStatus = "complete";
         console.log("CP_RENDER_COMPLETE");
-        return;
+        if (raf) cancelAnimationFrame(raf);
+        if (interval) window.clearInterval(interval);
       }
+    };
 
+    const tick = () => {
+      updateClock();
+      if (complete) return;
       raf = requestAnimationFrame(tick);
     };
 
     (window as any).__renderComplete = false;
+    (window as any).__renderError = "";
+    (window as any).__renderNowMs = 0;
+    (window as any).__renderProgress = 0;
+    (window as any).__renderStatus = "recording";
+    interval = window.setInterval(updateClock, 250);
     raf = requestAnimationFrame(tick);
     return () => {
+      complete = true;
       cancelAnimationFrame(raf);
+      window.clearInterval(interval);
       if (previewAudio) {
         previewAudio.pause();
         previewAudio.src = "";

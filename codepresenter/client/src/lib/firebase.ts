@@ -1,10 +1,15 @@
-const hasFirebaseConfig = !!(
-  import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID
-);
+import { getRuntimeConfig, loadRuntimeConfig } from "@/lib/runtime-config";
 
-const firebaseConfig = {
+type FirebaseConfig = {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+};
+
+const buildTimeFirebaseConfig: FirebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -13,13 +18,52 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+let firebaseConfig: FirebaseConfig = buildTimeFirebaseConfig;
+export let hasFirebaseConfig = !!(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId
+);
+
 let app: any = null;
 let auth: any = null;
 let storage: any = null;
 let googleProvider: any = null;
 let initializationPromise: Promise<void> | null = null;
+let configLoadPromise: Promise<void> | null = null;
+
+export const initializeFirebaseConfig = async () => {
+  if (configLoadPromise) return configLoadPromise;
+
+  configLoadPromise = (async () => {
+    try {
+      await loadRuntimeConfig();
+      const runtimeConfig = getRuntimeConfig().firebase || {};
+      firebaseConfig = {
+        apiKey: runtimeConfig.apiKey || buildTimeFirebaseConfig.apiKey,
+        authDomain: runtimeConfig.authDomain || buildTimeFirebaseConfig.authDomain,
+        projectId: runtimeConfig.projectId || buildTimeFirebaseConfig.projectId,
+        storageBucket: runtimeConfig.storageBucket || buildTimeFirebaseConfig.storageBucket,
+        messagingSenderId: runtimeConfig.messagingSenderId || buildTimeFirebaseConfig.messagingSenderId,
+        appId: runtimeConfig.appId || buildTimeFirebaseConfig.appId,
+      };
+    } catch (error) {
+      console.warn("Failed to load runtime Firebase config; using build-time config if present.", error);
+    }
+
+    hasFirebaseConfig = !!(
+      firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId
+    );
+  })();
+
+  return configLoadPromise;
+};
 
 const initializeFirebase = async () => {
+  await initializeFirebaseConfig();
+
   if (!hasFirebaseConfig) {
     throw new Error("Firebase configuration is not available");
   }
@@ -106,4 +150,4 @@ const getGoogleProvider = async () => {
   }
 };
 
-export { getAuth, getStorage, getGoogleProvider, hasFirebaseConfig };
+export { getAuth, getStorage, getGoogleProvider };

@@ -57,7 +57,9 @@ export const FilesManager = ({ onInsertFileToNotebook, compact = false }: FilesM
   const fetchFiles = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/files');
+      const response = await fetch('/api/files', {
+        credentials: 'include',
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch files');
       }

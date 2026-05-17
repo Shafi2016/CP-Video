@@ -54,6 +54,7 @@ export const SidebarFileUpload = ({ onSuccess }: SidebarFileUploadProps) => {
       const response = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
       clearInterval(progressInterval);

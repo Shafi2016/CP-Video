@@ -69,6 +69,7 @@ export default function OpenPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(convertedNotebook),
+          credentials: 'include',
         });
 
         if (!saveResponse.ok) {

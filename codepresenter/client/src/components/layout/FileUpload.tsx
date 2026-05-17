@@ -91,6 +91,7 @@ export const FileUpload = ({ onSuccess, compact = false, directUpload = false }:
       const response = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
       clearInterval(progressInterval);

@@ -48,3 +48,51 @@ Private key files and `.env` files must not be committed.
 - `/render/export`
 
 Core APIs are mounted under `/api/notebooks`, `/api/files`, `/api/google-drive`, `/api/voice`, `/api/video`, `/api/credits`, and `/api/stripe`.
+
+## Cloud Run Deployment
+
+The included `Dockerfile` and `cloudbuild.yaml` deploy the app as the existing Cloud Run service/image name `jupyter-server-launcher` in project `codepresenter2016`.
+
+Recommended production domains:
+
+- `https://present.ailivelearn.com`
+- `https://cp.ailivelearn.com`
+
+Before deploying, create or update Secret Manager secrets named:
+
+- `GOOGLE_API_KEY`
+- `OPENAI_API_KEY`
+- `ACCESS_CODE`
+- `JUPYTER_TOKEN`
+
+From Google Cloud Shell or a local machine with `gcloud` installed:
+
+```bash
+cd codepresenter
+gcloud config set project codepresenter2016
+gcloud builds submit --config cloudbuild.yaml
+```
+
+Then map both custom domains to the Cloud Run service:
+
+```bash
+gcloud beta run domain-mappings create --service jupyter-server-launcher --domain present.ailivelearn.com --region us-central1
+gcloud beta run domain-mappings create --service jupyter-server-launcher --domain cp.ailivelearn.com --region us-central1
+```
+
+Google Cloud will show the DNS records to add at your domain host. Keep `ACCESS_CODE` set for the Kaggle demo so the app is not openly usable.
+
+## Firebase Hosting Frontend
+
+For the lower-cost split deployment, keep the backend on Cloud Run and serve the React frontend from Firebase Hosting:
+
+```bash
+cd codepresenter
+npm install
+npm run build
+firebase deploy --only hosting --project codepresenter2016
+```
+
+`firebase.json` serves `dist/public` statically and rewrites `/api/**`, `/uploads/**`, and render routes to the Cloud Run service `jupyter-server-launcher` in `us-central1`. The notebook WebSocket uses the Cloud Run URL from `/api/public-config`.
+
+Connect `present.ailivelearn.com` and `cp.ailivelearn.com` in Firebase Hosting custom domains, not Cloud Run domain mappings, when using this split setup.

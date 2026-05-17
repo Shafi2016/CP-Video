@@ -63,10 +63,12 @@ interface RenderJob {
 }
 
 const jobs = new Map<string, RenderJob>();
+const serverBootId = crypto.randomUUID();
+const serverStartedAt = Date.now();
 const uploadsDir = path.resolve(process.cwd(), "uploads");
 const videosDir = path.join(uploadsDir, "videos");
-const renderJobsDir = path.resolve(process.cwd(), "temp", "render-jobs");
 const tempRoot = process.env.K_SERVICE ? "/tmp" : path.resolve(process.cwd(), "temp");
+const renderJobsDir = path.join(tempRoot, "render-jobs");
 const tempDir = path.join(tempRoot, "render-temp");
 
 function ensureDirs() {
@@ -91,6 +93,11 @@ function getFfmpegExecutable() {
   return typeof ffmpegStatic === "string" && ffmpegStatic.trim()
     ? ffmpegStatic
     : resolveFFmpegExecutable();
+}
+
+function getInternalRenderOrigin() {
+  const port = Number(process.env.PORT) || 8080;
+  return `http://127.0.0.1:${port}`;
 }
 
 async function runProcess(executable: string, args: string[]) {
@@ -249,7 +256,30 @@ function buildRenderTimeline(job: RenderJob) {
 async function persistJob(job: RenderJob) {
   ensureDirs();
   const jobPath = path.join(renderJobsDir, `${job.id}.json`);
-  await fsp.writeFile(jobPath, JSON.stringify(job, null, 2), "utf8");
+  const tempPath = `${jobPath}.${process.pid}.tmp`;
+  await fsp.writeFile(tempPath, JSON.stringify(job, null, 2), "utf8");
+  await fsp.rename(tempPath, jobPath);
+}
+
+async function loadPersistedJob(jobId: string): Promise<RenderJob | null> {
+  if (!/^[a-f0-9-]{20,}$/i.test(jobId)) return null;
+
+  const existing = jobs.get(jobId);
+  if (existing) return existing;
+
+  try {
+    const jobPath = path.join(renderJobsDir, `${jobId}.json`);
+    const raw = await fsp.readFile(jobPath, "utf8");
+    const job = JSON.parse(raw) as RenderJob;
+    if (!job?.id || job.id !== jobId) return null;
+    jobs.set(job.id, job);
+    return job;
+  } catch (error: any) {
+    if (error?.code !== "ENOENT") {
+      console.warn(`[VideoRender] Failed to reload persisted render job ${jobId}:`, error);
+    }
+    return null;
+  }
 }
 
 function setJob(job: RenderJob, update: Partial<RenderJob>) {
@@ -342,23 +372,87 @@ async function runRenderJob(jobId: string) {
     const page = await context.newPage();
     const pageVideo = page.video();
     const pageVideoPath = pageVideo ? pageVideo.path() : undefined;
+    let lastBrowserProgressAt = Date.now();
+    let lastBrowserProgress = 0;
+    let lastBrowserStatus = "created";
 
-    page.on("console", (msg: { text(): string }) => {
+    page.on("console", (msg: { text(): string; type(): string }) => {
       const text = msg.text();
-      if (!text.startsWith("CP_PROGRESS:")) return;
+      if (!text.startsWith("CP_PROGRESS:")) {
+        console.log(`[VideoRender:${job.id}:browser:${msg.type()}] ${text}`);
+        return;
+      }
       const value = Number(text.replace("CP_PROGRESS:", ""));
       if (!Number.isFinite(value)) return;
+      lastBrowserProgressAt = Date.now();
+      lastBrowserProgress = value;
+      lastBrowserStatus = "recording";
       const mapped = Math.min(88, 35 + value * 0.53);
       setJob(job, { progress: mapped, message: "Recording lesson in browser..." });
     });
+    page.on("pageerror", (error) => {
+      console.warn(`[VideoRender:${job.id}:pageerror]`, error);
+    });
+    page.on("requestfailed", (request) => {
+      const failure = request.failure();
+      console.warn(`[VideoRender:${job.id}:requestfailed] ${request.url()} ${failure?.errorText || ""}`);
+    });
 
-    const renderUrl = `${job.request.frontendOrigin}/render-mode?jobId=${encodeURIComponent(job.id)}`;
+    const renderUrl = `${getInternalRenderOrigin()}/render-mode?jobId=${encodeURIComponent(job.id)}`;
     setJob(job, { status: "recording", progress: 38, message: "Recording lesson in browser..." });
 
     await page.goto(renderUrl, { waitUntil: "networkidle", timeout: 90_000 });
-    await page.waitForFunction(() => (window as any).__renderComplete === true, undefined, {
+    lastBrowserStatus = "loaded";
+    const renderCompletePromise = page.waitForFunction(() => {
+      const bodyText = document.body?.innerText || "";
+      if ((window as any).__renderComplete === true) {
+        return { state: "complete" };
+      }
+      const renderError = (window as any).__renderError;
+      if (renderError) {
+        return { state: "render-error", detail: String(renderError).slice(0, 500) };
+      }
+      if (bodyText.includes("Enter access code") || bodyText.includes("Restricted Access")) {
+        return { state: "access-gate", detail: bodyText.slice(0, 500) };
+      }
+      if (bodyText.includes("Render data fetch failed") || bodyText.includes("Render job data was not ready")) {
+        return { state: "render-error", detail: bodyText.slice(0, 500) };
+      }
+      return false;
+    }, undefined, {
       timeout: Math.max(120_000, totalDurationMs + 90_000),
     });
+    const watchdogPromise = new Promise<never>((_, reject) => {
+      const timer = setInterval(async () => {
+        try {
+          const state = await page.evaluate(() => ({
+            complete: Boolean((window as any).__renderComplete),
+            error: (window as any).__renderError ? String((window as any).__renderError) : "",
+            nowMs: Number((window as any).__renderNowMs || 0),
+            progress: Number((window as any).__renderProgress || 0),
+            status: String((window as any).__renderStatus || "unknown"),
+          }));
+          lastBrowserStatus = state.status;
+          if (state.error) {
+            clearInterval(timer);
+            reject(new Error(`Render page error: ${state.error}`));
+          }
+          if (!state.complete && Date.now() - lastBrowserProgressAt > 75_000) {
+            clearInterval(timer);
+            reject(new Error(`Render page stalled at ${state.progress.toFixed(2)}% (${state.nowMs}ms/${totalDurationMs}ms, status=${state.status}, lastConsoleProgress=${lastBrowserProgress.toFixed(2)}%, lastConsoleStatus=${lastBrowserStatus})`));
+          }
+        } catch (error) {
+          clearInterval(timer);
+          reject(error);
+        }
+      }, 5_000);
+      void renderCompletePromise.finally(() => clearInterval(timer)).catch(() => undefined);
+    });
+    const renderStateHandle = await Promise.race([renderCompletePromise, watchdogPromise]);
+    const renderState = await renderStateHandle.jsonValue() as { state?: string; detail?: string };
+    if (renderState?.state !== "complete") {
+      throw new Error(`Render page did not complete: ${renderState?.state || "unknown"} ${renderState?.detail || ""}`.trim());
+    }
     await page.waitForTimeout(500);
 
     await context.close();
@@ -456,10 +550,17 @@ videoRenderRouter.post("/render", async (req: Request, res: Response) => {
   });
 });
 
-videoRenderRouter.get("/render/:jobId", (req: Request, res: Response) => {
-  const job = jobs.get(req.params.jobId);
+videoRenderRouter.get("/render/:jobId", async (req: Request, res: Response) => {
+  const job = await loadPersistedJob(req.params.jobId);
   if (!job) {
-    return res.status(404).json({ error: "Render job not found." });
+    return res.status(404).json({
+      error: "Render job not found.",
+      detail: "The render job was not found in this backend process or its local runtime job store. This usually means the Cloud Run revision restarted or a request reached a different instance before the render finished.",
+      serverBootId,
+      serverStartedAt,
+      pid: process.pid,
+      knownJobs: jobs.size,
+    });
   }
 
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -477,10 +578,17 @@ videoRenderRouter.get("/render/:jobId", (req: Request, res: Response) => {
   });
 });
 
-videoRenderRouter.get("/render/:jobId/data", (req: Request, res: Response) => {
-  const job = jobs.get(req.params.jobId);
+videoRenderRouter.get("/render/:jobId/data", async (req: Request, res: Response) => {
+  const job = await loadPersistedJob(req.params.jobId);
   if (!job) {
-    return res.status(404).json({ error: "Render job not found." });
+    return res.status(404).json({
+      error: "Render job not found.",
+      detail: "The render job was not found in this backend process or its local runtime job store. This usually means the Cloud Run revision restarted or a request reached a different instance before the render finished.",
+      serverBootId,
+      serverStartedAt,
+      pid: process.pid,
+      knownJobs: jobs.size,
+    });
   }
   if (!job.timeline || !job.totalDurationMs) {
     return res.status(409).json({ error: "Render timeline is not ready yet." });

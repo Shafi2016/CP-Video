@@ -29,7 +29,9 @@ export default function NotebookPage() {
       console.log('⏳ Fetching notebook with ID:', notebookId);
       
       try {
-        const response = await fetch(`/api/notebooks/${notebookId}`);
+        const response = await fetch(`/api/notebooks/${notebookId}`, {
+          credentials: 'include',
+        });
         console.log('📊 Fetch response status:', response.status);
         
         if (!response.ok) {
@@ -46,6 +48,7 @@ export default function NotebookPage() {
       }
     },
     enabled: !!notebookId, // Only run the query if we have a notebook ID
+    staleTime: Infinity,
     retry: 1, // Limit retries
     refetchOnWindowFocus: false,
     refetchInterval: false, // Disable automatic refetching
@@ -55,7 +58,7 @@ export default function NotebookPage() {
   const hasRedirectedRef = useRef(false);
   
   useEffect(() => {
-    if (error && !hasRedirectedRef.current) {
+    if (error && !notebook && !hasRedirectedRef.current) {
       console.error("Error loading notebook:", error);
       hasRedirectedRef.current = true;
       // Add a small delay to avoid immediate redirect
@@ -63,7 +66,7 @@ export default function NotebookPage() {
         setLocation("/code/notebooks");
       }, 100);
     }
-  }, [error, setLocation]);
+  }, [error, notebook, setLocation]);
 
   // Add debugging to see the notebook data
   console.log('Notebook data:', notebook);

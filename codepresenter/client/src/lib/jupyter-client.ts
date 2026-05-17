@@ -1,4 +1,5 @@
 import { JupyterMessage, ExecuteRequest } from "@/types";
+import { getRuntimeConfig, loadRuntimeConfig } from "@/lib/runtime-config";
 
 class JupyterClient {
   private socket: WebSocket | null = null;
@@ -34,7 +35,10 @@ class JupyterClient {
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      const configuredWsUrl = import.meta.env.VITE_CODEPRESENTER_WS_URL as string | undefined;
+      void loadRuntimeConfig();
+      const configuredWsUrl =
+        getRuntimeConfig().codePresenter?.wsUrl ||
+        (import.meta.env.VITE_CODEPRESENTER_WS_URL as string | undefined);
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = configuredWsUrl || `${protocol}//${window.location.host}/ws`;
 

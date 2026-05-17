@@ -22,7 +22,9 @@ function FilesPanel() {
   const fetchFiles = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/files');
+      const response = await fetch('/api/files', {
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch files');
       const data = await response.json();
       setFiles(data);
@@ -41,7 +43,10 @@ function FilesPanel() {
     if (!window.confirm(`Delete ${fileName}?`)) return;
     setDeleting(fileName);
     try {
-      const response = await fetch(`/api/files/${encodeURIComponent(fileName)}`, { method: 'DELETE' });
+      const response = await fetch(`/api/files/${encodeURIComponent(fileName)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Delete failed');
       toast({ title: 'File deleted', description: `${fileName} was deleted.` });
       fetchFiles();
@@ -90,6 +95,7 @@ function FilesPanel() {
               fetch('/api/files/upload', {
                 method: 'POST',
                 body: formData,
+                credentials: 'include',
               })
               .then(response => {
                 if (!response.ok) throw new Error('Upload failed');

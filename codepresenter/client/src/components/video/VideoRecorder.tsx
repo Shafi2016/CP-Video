@@ -1366,16 +1366,40 @@ export default function VideoRecorder({ cells, presentationSpeed = 50, onClose, 
 
       const pollStartedAt = Date.now();
       let complete = false;
+      let pollDelayMs = 3000;
+      let consecutiveRateLimitHits = 0;
+      let consecutiveMissingJobHits = 0;
       while (!complete) {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await new Promise((resolve) => setTimeout(resolve, pollDelayMs));
 
         const statusResponse = await fetch(`/api/video/render/${encodeURIComponent(jobId)}`, {
           cache: "no-store",
         });
         if (!statusResponse.ok) {
           const errorText = await statusResponse.text();
+          // Firebase Hosting / Cloud Run returns 429 with "Rate exceeded" when
+          // its rewrite throttle trips. Back off and retry rather than failing
+          // the whole render.
+          const isRateLimited =
+            statusResponse.status === 429 || /rate exceeded/i.test(errorText);
+          if (isRateLimited && consecutiveRateLimitHits < 6) {
+            consecutiveRateLimitHits += 1;
+            pollDelayMs = Math.min(pollDelayMs * 2, 15000);
+            continue;
+          }
+          const isMissingJob =
+            statusResponse.status === 404 && /Render job not found/i.test(errorText);
+          if (isMissingJob && consecutiveMissingJobHits < 8) {
+            consecutiveMissingJobHits += 1;
+            pollDelayMs = Math.min(2500 + consecutiveMissingJobHits * 1000, 12000);
+            setRenderStatusMessage("Render job is being restored on the server...");
+            continue;
+          }
           throw new Error(`Could not read render status: ${errorText}`);
         }
+        consecutiveRateLimitHits = 0;
+        consecutiveMissingJobHits = 0;
+        pollDelayMs = 3000;
 
         const renderJob = await statusResponse.json();
         setProgress(Number(renderJob.progress || 0));

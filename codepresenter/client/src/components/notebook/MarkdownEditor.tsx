@@ -107,7 +107,11 @@ export default function MarkdownEditor({ value, onChange }: MarkdownEditorProps)
     try {
       const form = new FormData();
       form.append('file', file);
-      const resp = await fetch('/api/files/upload', { method: 'POST', body: form });
+      const resp = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+      });
       if (!resp.ok) {
         const err = await resp.text();
         alert(`Image upload failed: ${err}`);

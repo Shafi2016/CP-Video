@@ -1,11 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import { fileURLToPath } from 'url';
-
-const viteLogger = createLogger();
 
 /**
  * Setup Vite dev server middleware.
@@ -14,6 +10,8 @@ const viteLogger = createLogger();
  * @param rootDir - Project root directory (where vite.config.ts is)
  */
 export async function setupVite(app: Express, server: Server, rootDir: string) {
+    const { createServer: createViteServer, createLogger } = await import("vite");
+    const viteLogger = createLogger();
     const serverOptions = {
         middlewareMode: true,
         hmr: {

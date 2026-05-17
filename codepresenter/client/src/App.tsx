@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { AccessCodeGate } from "@/components/auth/AccessCodeGate";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import NotebookPage from "@/pages/notebook-page";
@@ -45,18 +46,18 @@ function ProtectedRoutes() {
             <Route path="/dashboard" component={DashboardPage} />
 
             <Route path="/code" component={NotebookPage} />
-            <Route path="/code/notebooks" component={Home} />
+            <Route path="/code/notebooks" component={NotebookPage} />
             <Route path="/code/notebook/:id" component={NotebookPage} />
             <Route path="/code/open" component={OpenPage} />
             <Route path="/code/files" component={Files} />
 
             <Route path="/codepresenter" component={NotebookPage} />
-            <Route path="/codepresenter/notebooks" component={Home} />
+            <Route path="/codepresenter/notebooks" component={NotebookPage} />
             <Route path="/codepresenter/notebook/:id" component={NotebookPage} />
             <Route path="/codepresenter/open" component={OpenPage} />
             <Route path="/codepresenter/files" component={Files} />
 
-            <Route path="/notebooks" component={Home} />
+            <Route path="/notebooks" component={NotebookPage} />
             <Route path="/notebook/:id" component={NotebookPage} />
             <Route path="/notebook" component={NotebookPage} />
             <Route path="/open" component={OpenPage} />
@@ -103,12 +104,14 @@ function App() {
 
     return (
         <ThemeProvider>
-            <AuthProvider>
-                <TooltipProvider>
-                    <Toaster />
-                    <Router />
-                </TooltipProvider>
-            </AuthProvider>
+            <AccessCodeGate>
+                <AuthProvider>
+                    <TooltipProvider>
+                        <Toaster />
+                        <Router />
+                    </TooltipProvider>
+                </AuthProvider>
+            </AccessCodeGate>
         </ThemeProvider>
     );
 }

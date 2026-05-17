@@ -90,6 +90,8 @@ app.use(express.urlencoded({ extended: false }));
 const allowedOrigins = [
     process.env.FRONTEND_ORIGIN,
     process.env.CODEPRESENTER_BASE_URL,
+    'https://present.ailivelearn.com',
+    'https://cp.ailivelearn.com',
     'https://codepresenter2016.web.app',
     'https://codepresenter2016.firebaseapp.com',
     'http://localhost:5173',
@@ -163,6 +165,27 @@ app.get('/api/health', (_req, res) => {
             jupyterGateway: jupyterInitialized
         },
         uptime: process.uptime()
+    });
+});
+
+app.get('/api/public-config', (_req, res) => {
+    const env = (name: string) => (process.env[name] || '').trim();
+    const cloudRunUrl = env('CLOUD_RUN_URL') || env('CODEPRESENTER_BACKEND_URL');
+    const wsUrl = env('VITE_CODEPRESENTER_WS_URL') || (cloudRunUrl ? `${cloudRunUrl.replace(/^http/, 'ws').replace(/\/$/, '')}/ws` : '');
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+        firebase: {
+            apiKey: env('VITE_FIREBASE_API_KEY'),
+            authDomain: env('VITE_FIREBASE_AUTH_DOMAIN'),
+            projectId: env('VITE_FIREBASE_PROJECT_ID'),
+            storageBucket: env('VITE_FIREBASE_STORAGE_BUCKET'),
+            messagingSenderId: env('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+            appId: env('VITE_FIREBASE_APP_ID'),
+        },
+        codePresenter: {
+            cloudRunUrl,
+            wsUrl,
+        },
     });
 });
 

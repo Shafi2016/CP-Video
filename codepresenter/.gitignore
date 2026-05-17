@@ -6,6 +6,7 @@ dist/
 client/dist/
 server/dist/
 .vite/
+.firebase/
 
 # Environment and secrets
 .env

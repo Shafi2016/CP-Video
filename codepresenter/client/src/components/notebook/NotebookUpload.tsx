@@ -56,6 +56,7 @@ export const NotebookUpload = ({ onSuccess, openImmediately }: NotebookUploadPro
       const response = await fetch('/api/notebooks/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -87,21 +88,22 @@ export const NotebookUpload = ({ onSuccess, openImmediately }: NotebookUploadPro
         description: `${file.name} has been uploaded successfully`,
       });
 
-      // Navigate to the uploaded notebook instead of home page
-      if (responseJson && responseJson.id) {
-        console.log('Navigating to notebook:', responseJson.id);
-        setLocation(`/notebook/${responseJson.id}`);
-      } else {
-        // Fallback: navigate to home page if no ID
-        console.warn('No notebook ID in response, going to home page');
-        setLocation('/');
-      }
-
       // Reset form and close dialog
       setFile(null);
       setOpen(false);
-      
-      // Call onSuccess callback if provided
+
+      // Navigate to the uploaded notebook instead of the notebook manager.
+      if (responseJson && responseJson.id) {
+        const notebookPath = `/code/notebook/${responseJson.id}`;
+        queryClient.setQueryData([`/api/notebooks/${responseJson.id}`], responseJson);
+        console.log('Navigating to notebook:', responseJson.id);
+        setLocation(notebookPath);
+      } else {
+        console.warn('No notebook ID in response, opening a new notebook');
+        setLocation('/code');
+      }
+
+      // Call onSuccess after navigation so parent dialogs can close safely.
       if (onSuccess) {
         onSuccess();
       }

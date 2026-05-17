@@ -135,11 +135,7 @@ async function generateGoogleGemma(
 
   const model = request.model?.trim() || process.env.GEMMA_MODEL || DEFAULT_GEMMA_MODEL;
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const response = await postGoogleGemmaRequest(endpoint, apiKey, request);
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(`Google Gemma request failed with status ${response.status}: ${errorText.slice(0, 500)}`);
-  }
+  const response = await postGoogleGemmaRequestWithRetry(endpoint, apiKey, request, model);
 
   const json = await response.json() as any;
   const text = extractGeminiText(json);
@@ -150,18 +146,59 @@ async function generateGoogleGemma(
   return { text, provider: "google-gemma", model };
 }
 
+interface GoogleGemmaRequestOptions {
+  responseMimeType?: "application/json";
+}
+
+async function postGoogleGemmaRequestWithRetry(
+  endpoint: string,
+  apiKey: string,
+  request: TeachingScriptProviderRequest,
+  model: string,
+): Promise<Response> {
+  const attempts: GoogleGemmaRequestOptions[] = [
+    { responseMimeType: "application/json" },
+    {},
+    {},
+  ];
+  const failures: string[] = [];
+
+  for (let index = 0; index < attempts.length; index += 1) {
+    const response = await postGoogleGemmaRequest(endpoint, apiKey, request, attempts[index]);
+    if (response.ok) return response;
+
+    const errorText = await response.text().catch(() => "");
+    const compactError = errorText.replace(/\s+/g, " ").trim().slice(0, 500);
+    failures.push(`attempt ${index + 1}: status ${response.status}${compactError ? `: ${compactError}` : ""}`);
+
+    const retryable = response.status === 500 || response.status === 502 || response.status === 503 || response.status === 504;
+    const jsonModeMayBeRejected = index === 0 && response.status >= 400;
+    if (!retryable && !jsonModeMayBeRejected) break;
+
+    if (index < attempts.length - 1) {
+      console.warn(
+        `[AIProvider] Google Gemma ${model} request failed (${response.status}); retrying same model with simpler request body.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 900 * (index + 1)));
+    }
+  }
+
+  throw new Error(`Google Gemma request failed after same-model retries: ${failures.join(" | ")}`);
+}
+
 async function postGoogleGemmaRequest(
   endpoint: string,
   apiKey: string,
   request: TeachingScriptProviderRequest,
+  options: GoogleGemmaRequestOptions = {},
 ): Promise<Response> {
   const generationConfig: Record<string, unknown> = {
     temperature: 0.35,
     maxOutputTokens: request.maxOutputTokens,
-    thinkingConfig: {
-      thinkingLevel: "high",
-    },
   };
+  if (options.responseMimeType) {
+    generationConfig.responseMimeType = options.responseMimeType;
+  }
 
   return fetch(endpoint, {
     method: "POST",

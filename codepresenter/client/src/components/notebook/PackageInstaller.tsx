@@ -31,6 +31,7 @@ export function PackageInstaller({ onPackageInstalled }: PackageInstallerProps) 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ packages }),
+        credentials: 'include',
       });
 
       const result = await response.json();

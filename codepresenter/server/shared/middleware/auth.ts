@@ -21,6 +21,18 @@ export function getCookie(req: Request, name: string): string | undefined {
 /** Inline HTML for access code form */
 const accessHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Enter Access Code</title><style>body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0f172a;color:#e2e8f0} .card{background:#111827;border:1px solid #334155;border-radius:12px;padding:28px;max-width:360px;width:92%} h1{font-size:18px;margin:0 0 12px 0} p{font-size:13px;color:#94a3b8;margin:0 0 16px 0} input{width:100%;padding:10px 12px;border:1px solid #334155;border-radius:8px;background:#0b1220;color:#e2e8f0;outline:none} button{margin-top:12px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:#2563eb;color:white;cursor:pointer} .err{color:#f87171;font-size:12px;margin-top:10px;display:none}</style></head><body><div class="card"><h1>Restricted Access</h1><p>Please enter the access code.</p><input id="code" placeholder="Access code" type="password" autocomplete="one-time-code"/><button id="btn">Continue</button><div id="err" class="err">Invalid code</div></div><script>const btn=document.getElementById('btn');const err=document.getElementById('err');btn.onclick=async()=>{err.style.display='none';const code=(document.getElementById('code')).value.trim();try{const res=await fetch('/api/access/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});if(res.ok){location.reload();}else{err.style.display='block';}}catch(e){err.style.display='block';}}</script></body></html>`;
 
+function getSubmittedAccessCode(req: Request): string | undefined {
+    const cookie = getCookie(req, 'access');
+    if (cookie) return cookie;
+
+    const headerCode = req.get('x-access-code');
+    if (headerCode) return headerCode;
+
+    const auth = req.get('authorization') || '';
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return match?.[1];
+}
+
 /**
  * Setup access gate routes and middleware.
  * @param app - Express app
@@ -35,6 +47,13 @@ export function setupAccessGate(
     cookieDomain?: string
 ) {
     const ACCESS_CODE = (process.env.ACCESS_CODE || '').trim();
+    const getCookieDomainSuffix = () => (cookieDomain || '').trim().replace(/^\./, '').toLowerCase();
+    const shouldSetCookieDomain = (req: Request) => {
+        const suffix = getCookieDomainSuffix();
+        if (!suffix) return false;
+        const hostname = (req.hostname || '').toLowerCase();
+        return hostname === suffix || hostname.endsWith(`.${suffix}`);
+    };
 
     // Login route
     app.post('/api/access/login', (req: Request, res: Response) => {
@@ -50,7 +69,7 @@ export function setupAccessGate(
 
             const isProd = app.get('env') !== 'development';
             let cookie = `access=${encodeURIComponent(code)}; Path=/; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
-            if (cookieDomain && isProd) {
+            if (isProd && shouldSetCookieDomain(req)) {
                 cookie += `; Domain=${cookieDomain}`;
             }
             res.setHeader('Set-Cookie', cookie);
@@ -64,8 +83,8 @@ export function setupAccessGate(
     // Check auth status
     app.get('/api/access/check', (req: Request, res: Response) => {
         if (!ACCESS_CODE) return res.status(200).json({ ok: true });
-        const cookie = getCookie(req, 'access');
-        if (cookie && cookie.toUpperCase() === ACCESS_CODE.toUpperCase()) {
+        const submittedCode = getSubmittedAccessCode(req);
+        if (submittedCode && submittedCode.toUpperCase() === ACCESS_CODE.toUpperCase()) {
             return res.status(200).json({ ok: true });
         }
         return res.status(401).json({ ok: false });
@@ -75,7 +94,7 @@ export function setupAccessGate(
     app.post('/api/access/logout', (_req: Request, res: Response) => {
         const isProd = app.get('env') !== 'development';
         let cookie = `access=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
-        if (cookieDomain && isProd) {
+        if (isProd && shouldSetCookieDomain(_req)) {
             cookie += `; Domain=${cookieDomain}`;
         }
         res.setHeader('Set-Cookie', cookie);
@@ -87,12 +106,22 @@ export function setupAccessGate(
         if (!ACCESS_CODE) return next();
 
         const p = req.path;
+        const isDev = app.get('env') === 'development' || process.env.NODE_ENV === 'development';
 
         // Always allow these publicly
         if (
             p === '/' ||
+            (isDev && (
+                p.startsWith('/@vite') ||
+                p.startsWith('/@react-refresh') ||
+                p.startsWith('/@id') ||
+                p.startsWith('/@fs') ||
+                p.startsWith('/src/') ||
+                p.startsWith('/node_modules/')
+            )) ||
             p.startsWith('/api/access/') ||
             p.startsWith('/api/health') ||
+            p.startsWith('/api/public-config') ||
             p === '/render-mode' ||
             p.startsWith('/render-mode') ||
             p.startsWith('/uploads') ||
@@ -114,8 +143,8 @@ export function setupAccessGate(
         const isProtectedRoute = protectedPaths.some(path => p.startsWith(path));
         if (!isProtectedRoute) return next();
 
-        const cookie = getCookie(req, 'access');
-        if (cookie && cookie.toUpperCase() === ACCESS_CODE.toUpperCase()) return next();
+        const submittedCode = getSubmittedAccessCode(req);
+        if (submittedCode && submittedCode.toUpperCase() === ACCESS_CODE.toUpperCase()) return next();
 
         // If it's an API route that is protected, block it
         if (p.startsWith('/api')) {

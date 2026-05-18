@@ -56,7 +56,7 @@ The included `Dockerfile` and `cloudbuild.yaml` deploy the app as the existing C
 Recommended production domains:
 
 - `https://present.ailivelearn.com`
-- `https://cp.ailivelearn.com`
+  
 
 Before deploying, create or update Secret Manager secrets named:
 
@@ -95,4 +95,4 @@ firebase deploy --only hosting --project codepresenter2016
 
 `firebase.json` serves `dist/public` statically and rewrites `/api/**`, `/uploads/**`, and render routes to the Cloud Run service `jupyter-server-launcher` in `us-central1`. The notebook WebSocket uses the Cloud Run URL from `/api/public-config`.
 
-Connect `present.ailivelearn.com` and `cp.ailivelearn.com` in Firebase Hosting custom domains, not Cloud Run domain mappings, when using this split setup.
+Connect `present.ailivelearn.com in Firebase Hosting custom domains, not Cloud Run domain mappings, when using this split setup.
